@@ -15,10 +15,18 @@ CinderellaGameNode = cc.Node.extend({
         this._bottomMenuUI = null;
         this._btnSpin = null;
         this._reelsNode = null;
-        this.stripData = null;
+        this._Data = null;
+        this._stripData = null;
     },
 
     _initValues: function () {
+        this._Data = cc.loader.getRes("res/data.json"); // JSON 가져오기
+
+        if (this._Data) {
+            this._stripData = this._Data.strip; // strip 배열 가져오기
+        } else {
+            cc.log("JSON 데이터를 찾을 수 없습니다.");
+        }
     },
 
     _initUI: function () {
@@ -35,7 +43,7 @@ CinderellaGameNode = cc.Node.extend({
 
         //릴 관리 노드 생성
         var normalReelBack = this._background.getChildByName("imgBg").getChildByName("nodeReelBack");
-        this._reelsNode = new CinderellaReelsNode(normalReelBack);
+        this._reelsNode = new CinderellaReelsNode(normalReelBack, this._stripData);
         this.addChild( this._reelsNode );
 
         //노드의 자식 계층구조를 보기위한 함수
@@ -57,14 +65,6 @@ CinderellaGameNode = cc.Node.extend({
     },
 
     _onSpin : function (){
-        var jsonData = cc.loader.getRes("res/data.json"); // JSON 가져오기
-
-        if (jsonData) {
-            this.stripData = jsonData.strip; // strip 배열 가져오기
-        } else {
-            cc.log("JSON 데이터를 찾을 수 없습니다.");
-        }
-
         var rand = [];
         for (var count = 0; count < 5; count++) {
             rand.push(Math.random() * 59 | 0);
@@ -72,15 +72,14 @@ CinderellaGameNode = cc.Node.extend({
 
         var randResult = [];
         for (var index = 0; index < 5; index++) {
-            randResult.push(this.stripData[index][rand[index]]);
+            randResult.push(this._stripData[index][rand[index]]);
         }
 
-        this._spin(randResult);
+        this._reelsNode.startScrolling();
+        this._spin(rand);
     },
 
     _spin : function (result){
-        cc.log(result);
-
-
+        this._reelsNode.spinEnd(result);
     }
 })

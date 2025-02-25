@@ -1,4 +1,4 @@
-SymbolObject = cc.Node.extend({
+SymbolNode = cc.Node.extend({
     ctor: function () {
         this._super();
         this._init();

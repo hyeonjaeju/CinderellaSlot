@@ -17,6 +17,6 @@
         "src/CinderellaGameNode.js",
         "src/CinderellaDefines.js",
         "src/CinderellaReelsNode.js",
-        "src/SymbolObject.js"
+        "src/SymbolNode.js"
     ]
 }
