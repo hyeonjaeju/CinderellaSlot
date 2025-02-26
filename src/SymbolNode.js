@@ -18,8 +18,10 @@ SymbolNode = cc.Node.extend({
 
     },
 
-    setSymbol: function (AR, index) {
+    setSymbol: function (AR, index, mulSymbolSize) {
         this.symbolNum = index;
+
+        this.setScale(this.getScale() * mulSymbolSize);
 
         var armature = new ccs.Armature(AR[index]);
         armature.getAnimation().play("normal");  // 애니메이션 실행

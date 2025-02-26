@@ -16,15 +16,23 @@ CinderellaReelsNode = cc.Node.extend({
         this.stripData = null;
         this._normalReelBack = null;
         this._reels = null;
-        this._symbolNodes = [];
-        this._symbolHeight = 120; // 심볼 간격 포함 높이
-        this._scrollSpeed = 30; // 스크롤 속도 (값이 클수록 빠름)
-        this._isScrolling = true; // 스크롤 여부
+        this._symbolNodes = null;
+        this._symbolHeight = null;
+        this._scrollSpeed = null;
+        this._mulSymbolSize = null;
+        this._startPosY = null;
+        this._reelUpdates = null;
     },
 
     _initValues: function (stripData) {
         this.AR = ["sl_symbolAR01", "sl_symbolAR02", "sl_symbolAR03", "sl_symbolAR04", "sl_symbolAR05", "sl_symbolAR06"];
         this.stripData = stripData;
+        this._symbolNodes = [];
+        this._symbolHeight = 105; // 심볼 간격 포함 높이
+        this._scrollSpeed = 30; // 스크롤 속도 (값이 클수록 빠름)
+        this._mulSymbolSize = 0.8; //슬롯 사이즈랑 안맞을 때 변경
+        this._startPosY = 270;
+        this._reelUpdates = [];
     },
 
     _initReels: function (normalReelBack) {
@@ -50,18 +58,18 @@ CinderellaReelsNode = cc.Node.extend({
 
     _initSymbols: function () {
         for (var reelIndex = 0; reelIndex < this.stripData.length; reelIndex++) {
-            var layout = this._reels[reelIndex].layout;
+            var reel = this._reels[reelIndex];
+            var layout = reel.layout;
+            var strip = this.stripData[reelIndex];
 
-            for (var symbolCount = 0; symbolCount < this.stripData[reelIndex].length; symbolCount++) {
-                var symbolIndex = this.stripData[reelIndex][symbolCount] - 1;
+            for (var symbolCount = 0; symbolCount < strip.length; symbolCount++) {
+                var symbolIndex = strip[symbolCount] - 1;
                 var symbolNode = new SymbolNode();
-                symbolNode.setSymbol(this.AR, symbolIndex);
+                symbolNode.setSymbol(this.AR, symbolIndex, this._mulSymbolSize);
 
-                // 심볼 위치 설정 (간격 포함)
-                var startY = this._reels[reelIndex].getContentSize().height;
                 symbolNode.setPosition(
-                    this._reels[reelIndex].getContentSize().width / 2,
-                    startY - symbolCount * this._symbolHeight
+                    reel.getContentSize().width / 2,
+                    this._startPosY - symbolCount * this._symbolHeight
                 );
 
                 layout.addChild(symbolNode, 1);
@@ -70,13 +78,13 @@ CinderellaReelsNode = cc.Node.extend({
         }
     },
 
-    startScrolling: function () {
+    startSpin: function () {
         for (var reelIndex = 0; reelIndex < this._reels.length; reelIndex++) {
-            this._scrollSymbols(reelIndex);
+            this._spinSymbols(reelIndex);
         }
     },
 
-    _scrollSymbols: function (reelIndex) {
+    _spinSymbols: function (reelIndex) {
         var symbols = this._symbolNodes[reelIndex];
 
         var update = function () {
@@ -97,42 +105,49 @@ CinderellaReelsNode = cc.Node.extend({
             }
         }.bind(this);
 
-        this.schedule(update, 1 / 144); // 매 프레임 업데이트
+        // 릴별 업데이트를 저장하고 실행
+        this._reelUpdates[reelIndex] = update;
+        this.schedule(update, 1 / 144);
     },
 
     spinEnd: function(result) {
-        // 예시: stopIndex는 result 값에 따라 설정됨
-        var stopIndex = result; // 또는 원하는 로직에 맞게 설정
+        var spinResults = result; // 또는 원하는 로직에 맞게 설정
 
         // 1초 후에 스케줄로 stopAtTargetPosition 호출
         this.scheduleOnce(function() {
-            if (stopIndex !== undefined && stopIndex !== null) {
-                this._stopAtTargetPosition(stopIndex);
+            if (spinResults !== undefined && spinResults !== null) {
+                this._stopAtTargetPosition(spinResults);
             } else {
                 console.error("stopIndex가 정의되지 않았습니다!");
             }
         }, 1); // 1초 후 호출
     },
 
-    _stopAtTargetPosition: function(stopIndex) {
-        if (stopIndex < this._symbolNodes.length) {
-            var symbols = this._symbolNodes[stopIndex];
-            var targetPosition = 0; // 예시: 목표 위치는 0으로 설정
+    _stopAtTargetPosition: function(spinResults) {
+        cc.log(spinResults);
+        cc.log(this._reels.length);
+        for (var reelIndex = 0; reelIndex < this._reels.length; reelIndex++) {
+            cc.log(reelIndex);
+            var stopIndex = spinResults[reelIndex];
+            if (spinResults[reelIndex] < this._symbolNodes[reelIndex].length) {
+                var targetSymbol = this._symbolNodes[reelIndex][stopIndex];
+                var targetPosition = this._startPosY - 2 * this._symbolHeight; // 예시: 목표 위치는 0으로 설정
 
-            // 목표 위치로 스크롤 멈추기
-            var updateStop = function() {
-                if (symbols[0].y <= targetPosition) {
-                    this.unschedule(updateStop); // 업데이트 중지
-                } else {
-                    symbols.forEach(function(symbol) {
-                        symbol.y -= 5; // 스크롤 속도 설정 (조정 필요)
-                    });
-                }
-            }.bind(this);
+                // 목표 위치로 스크롤 멈추기
+                var updateStop = function(targetSymbol, targetPosition) {
+                    return function() {
+                        if (Math.abs(targetSymbol.getPosition().y - targetPosition) < 1) {
+                            cc.log(reelIndex);
+                            this.unschedule(this._reelUpdates[reelIndex]);
+                            //this.unschedule(updateStop); // 업데이트 중지
+                        }
+                    }.bind(this);
+                }(targetSymbol, targetPosition,reelIndex); // 즉시 실행 함수로 값을 넘겨줌
 
-            this.schedule(updateStop, 1 / 60); // 매 프레임마다 업데이트
-        } else {
-            console.error("잘못된 stopIndex:", stopIndex);
+                this.schedule(updateStop, 1 / 144); // 매 프레임마다 업데이트
+            } else {
+                console.error("잘못된 stopIndex:", stopIndex);
+            }
         }
     }
 

@@ -75,7 +75,7 @@ CinderellaGameNode = cc.Node.extend({
             randResult.push(this._stripData[index][rand[index]]);
         }
 
-        this._reelsNode.startScrolling();
+        this._reelsNode.startSpin();
         this._spin(rand);
     },
 
