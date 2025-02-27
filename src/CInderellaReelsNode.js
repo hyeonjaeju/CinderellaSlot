@@ -12,27 +12,33 @@ CinderellaReelsNode = cc.Node.extend({
     },
 
     _initProperties: function () {
-        this.AR = null;
+        this._AR = null;
+        this._ARTotal = null;
         this.stripData = null;
         this._normalReelBack = null;
         this._reels = null;
         this._symbolNodes = null;
         this._symbolHeight = null;
-        this._scrollSpeed = null;
+        this._spinSpeed = null;
         this._mulSymbolSize = null;
         this._startPosY = null;
         this._reelUpdates = null;
+        this._spinResults = null;
+        this._reelStopSchedules = null;
     },
 
     _initValues: function (stripData) {
-        this.AR = ["sl_symbolAR01", "sl_symbolAR02", "sl_symbolAR03", "sl_symbolAR04", "sl_symbolAR05", "sl_symbolAR06"];
+        this._AR = [];
+        this._ARTotal = 6; // 심볼이 총 몇 개인지
         this.stripData = stripData;
         this._symbolNodes = [];
         this._symbolHeight = 105; // 심볼 간격 포함 높이
-        this._scrollSpeed = 30; // 스크롤 속도 (값이 클수록 빠름)
-        this._mulSymbolSize = 0.8; //슬롯 사이즈랑 안맞을 때 변경
-        this._startPosY = 270;
+        this._spinSpeed  = 35; // 스크롤 속도 (값이 클수록 빠름)
+        this._mulSymbolSize = 0.95; //슬롯 사이즈랑 안맞을 때 변경
+        this._startPosY = 60;
+        this._endPosY = this._startPosY - this._symbolHeight;
         this._reelUpdates = [];
+        this._reelStopSchedules = [];
     },
 
     _initReels: function (normalReelBack) {
@@ -51,25 +57,26 @@ CinderellaReelsNode = cc.Node.extend({
         }
 
         // Armature 리소스 로드
-        for (var i = 0; i < this.AR.length; i++) {
+        for (var i = 0; i < this._ARTotal; i++) {
             ccs.armatureDataManager.addArmatureFileInfo(res["symbolAR0" + (i + 1)]);
+            this._AR.push("sl_symbolAR0" + (i + 1));
         }
     },
 
     _initSymbols: function () {
-        for (var reelIndex = 0; reelIndex < this.stripData.length; reelIndex++) {
+        for (var reelIndex = 0; reelIndex < this._reels.length; reelIndex++) {
             var reel = this._reels[reelIndex];
             var layout = reel.layout;
             var strip = this.stripData[reelIndex];
 
             for (var symbolCount = 0; symbolCount < strip.length; symbolCount++) {
-                var symbolIndex = strip[symbolCount] - 1;
+                var symbolIndex = strip[symbolCount] - 1; //strip에는 1부터 시작 해서 내림
                 var symbolNode = new SymbolNode();
-                symbolNode.setSymbol(this.AR, symbolIndex, this._mulSymbolSize);
+                symbolNode.setSymbol(this._AR, symbolIndex, this._mulSymbolSize);
 
                 symbolNode.setPosition(
-                    reel.getContentSize().width / 2,
-                    this._startPosY - symbolCount * this._symbolHeight
+                    reel.getContentSize().width / 2, //해당 릴의 중앙
+                    this._startPosY + symbolCount * this._symbolHeight
                 );
 
                 layout.addChild(symbolNode, 1);
@@ -87,68 +94,84 @@ CinderellaReelsNode = cc.Node.extend({
     _spinSymbols: function (reelIndex) {
         var symbols = this._symbolNodes[reelIndex];
 
-        var update = function () {
-            var maxY = Math.max.apply(
-                Math,
-                symbols.map(s => s.y)
-            ); // 현재 가장 높은 심볼의 Y 좌표
+        this._reelUpdates[reelIndex] = function () {
+            for (var symbolIndex = 0; symbolIndex < symbols.length; symbolIndex++) {
+                var symbol = symbols[symbolIndex];
+                symbol.setPositionY(symbol.getPositionY() - this._spinSpeed);
 
-            for (var i = 0; i < symbols.length; i++) {
-                var symbol = symbols[i];
-                symbol.y -= this._scrollSpeed;
+                if(symbol.getPositionY() <= this._endPosY) {
+                    var prevSymbolIndex = symbolIndex - 1;
+                    if(prevSymbolIndex < 0) { prevSymbolIndex = symbols.length - 1;}
 
-                // 클리핑 영역을 벗어나면 정확한 간격을 유지하며 맨 위로 이동
-                if (symbol.y < -this._symbolHeight) {
-                    symbol.y = maxY + this._symbolHeight;
-                    maxY = symbol.y; // 새로운 최상단 위치 업데이트
+                    var nextPosY = symbols[prevSymbolIndex].getPositionY() + this._symbolHeight;
+                    symbol.setPositionY(nextPosY);
                 }
             }
         }.bind(this);
 
         // 릴별 업데이트를 저장하고 실행
-        this._reelUpdates[reelIndex] = update;
-        this.schedule(update, 1 / 144);
+        this.schedule(this._reelUpdates[reelIndex], 1 / 144);
     },
 
-    spinEnd: function(result) {
-        var spinResults = result; // 또는 원하는 로직에 맞게 설정
-
-        // 1초 후에 스케줄로 stopAtTargetPosition 호출
-        this.scheduleOnce(function() {
-            if (spinResults !== undefined && spinResults !== null) {
-                this._stopAtTargetPosition(spinResults);
-            } else {
-                console.error("stopIndex가 정의되지 않았습니다!");
-            }
-        }, 1); // 1초 후 호출
-    },
-
-    _stopAtTargetPosition: function(spinResults) {
-        cc.log(spinResults);
-        cc.log(this._reels.length);
+    spinEnd: function(result, delayAdd, callback) {
+        this._spinResults = result;
+        var delay = 0;
         for (var reelIndex = 0; reelIndex < this._reels.length; reelIndex++) {
-            cc.log(reelIndex);
-            var stopIndex = spinResults[reelIndex];
-            if (spinResults[reelIndex] < this._symbolNodes[reelIndex].length) {
-                var targetSymbol = this._symbolNodes[reelIndex][stopIndex];
-                var targetPosition = this._startPosY - 2 * this._symbolHeight; // 예시: 목표 위치는 0으로 설정
+            delay+=delayAdd;
 
-                // 목표 위치로 스크롤 멈추기
-                var updateStop = function(targetSymbol, targetPosition) {
-                    return function() {
-                        if (Math.abs(targetSymbol.getPosition().y - targetPosition) < 1) {
-                            cc.log(reelIndex);
-                            this.unschedule(this._reelUpdates[reelIndex]);
-                            //this.unschedule(updateStop); // 업데이트 중지
-                        }
-                    }.bind(this);
-                }(targetSymbol, targetPosition,reelIndex); // 즉시 실행 함수로 값을 넘겨줌
+            this._reelStopSchedules[reelIndex] = ((index) => () => {
+                this.unschedule(this._reelUpdates[index]);
+                this._reelUpdates[index] = null;
+                this.correctSymbolsPosition(index, this._spinResults);
+                if(index === this._reels.length - 1) {callback();}
+            })(reelIndex);
 
-                this.schedule(updateStop, 1 / 144); // 매 프레임마다 업데이트
-            } else {
-                console.error("잘못된 stopIndex:", stopIndex);
+            this.scheduleOnce(this._reelStopSchedules[reelIndex], delay);
+        }
+    },
+
+    spinStop: function () {
+        for (var reelIndex = 0; reelIndex < this._reels.length; reelIndex++) {
+            if(this._reelUpdates[reelIndex] !== null){
+                this.unschedule(this._reelUpdates[reelIndex]);
+                this.correctSymbolsPosition(reelIndex, this._spinResults);
+                this.unschedule(this._reelStopSchedules[reelIndex]);
+                this._reelStopSchedules[reelIndex] = null;
             }
         }
-    }
+    },
 
+    correctSymbolsPosition: function (reelIndex, spinResults) {
+        var symbols = this._symbolNodes[reelIndex];
+        var spinResult = spinResults[reelIndex];
+        var selectedSymbol = symbols[spinResult];
+
+        // 선택된 심볼의 Y 위치를 시작 위치로 설정
+        selectedSymbol.setPositionY(this._startPosY);
+
+        // spinResult 이후 심볼들 위치 설정
+        var posY = selectedSymbol.getPositionY() + this._symbolHeight;
+        for (var symbolIndex = spinResult + 1; symbolIndex < symbols.length; symbolIndex++) {
+            symbols[symbolIndex].setPositionY(posY);
+            posY += this._symbolHeight;
+        }
+
+        // spinResult 이전 심볼들 위치 설정
+        for (var symbolIndex = 0; symbolIndex < spinResult; symbolIndex++) {
+            symbols[symbolIndex].setPositionY(posY);
+            posY += this._symbolHeight;
+        }
+        this.animateSymbolsOnStop(reelIndex, spinResult);
+    },
+    animateSymbolsOnStop: function (reelIndex, spinResult) {
+        var symbols = this._symbolNodes[reelIndex];
+
+        // 선택된 심볼 인덱스 spinResult와 그 위쪽 3개 심볼에만 점프 애니메이션 적용
+        for (var symbolIndex = spinResult; symbolIndex < spinResult + 4; symbolIndex++) {
+            var index = symbolIndex >= symbols.length ? symbolIndex - symbols.length : symbolIndex;
+            symbols[index].runAction(
+                cc.sequence(cc.jumpBy(0.2, cc.p(0, 0), -20, 1)).easing(cc.easeBackOut())
+            );
+        }
+    }
 });

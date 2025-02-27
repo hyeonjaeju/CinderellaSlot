@@ -17,6 +17,7 @@ CinderellaGameNode = cc.Node.extend({
         this._reelsNode = null;
         this._Data = null;
         this._stripData = null;
+        this._isSpining = null;
     },
 
     _initValues: function () {
@@ -27,6 +28,8 @@ CinderellaGameNode = cc.Node.extend({
         } else {
             cc.log("JSON 데이터를 찾을 수 없습니다.");
         }
+
+        this._isSpining = false;
     },
 
     _initUI: function () {
@@ -65,14 +68,15 @@ CinderellaGameNode = cc.Node.extend({
     },
 
     _onSpin : function (){
-        var rand = [];
-        for (var count = 0; count < 5; count++) {
-            rand.push(Math.random() * 59 | 0);
+        if(this._isSpining){
+            this._spinStop();
+            return;
         }
 
-        var randResult = [];
-        for (var index = 0; index < 5; index++) {
-            randResult.push(this._stripData[index][rand[index]]);
+        var rand = [];
+        var max = this._stripData[0].length - 1;
+        for (var count = 0; count < 5; count++) {
+            rand.push(Math.random() * max | 0);
         }
 
         this._reelsNode.startSpin();
@@ -80,6 +84,17 @@ CinderellaGameNode = cc.Node.extend({
     },
 
     _spin : function (result){
-        this._reelsNode.spinEnd(result);
+        var delay = 0.5;
+        this._reelsNode.spinEnd(result, delay, this.setisSpining.bind(this, false));
+        this.setisSpining(true);
+    },
+
+    _spinStop : function () {
+        this._reelsNode.spinStop();
+        this.setisSpining(false);
+    },
+
+    setisSpining : function (isSpining) {
+        this._isSpining = isSpining;
     }
 })
