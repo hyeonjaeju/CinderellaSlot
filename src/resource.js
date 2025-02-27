@@ -11,7 +11,9 @@ var res = {
     symbolAR04: "res/sl_symbolAR04.ExportJson",
     symbolAR05: "res/sl_symbolAR05.ExportJson",
     symbolAR06: "res/sl_symbolAR06.ExportJson",
-    Data : "res/data.json"
+    Data : "res/data.json",
+    BMFont_png : "res/image/PU_coinGoldFont.png",
+    BMFont : "res/image/PU_coinGoldFont.fnt"
 };
 
 var g_resources = [];

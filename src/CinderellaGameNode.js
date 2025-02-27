@@ -14,22 +14,35 @@ CinderellaGameNode = cc.Node.extend({
         this._background = null;
         this._bottomMenuUI = null;
         this._btnSpin = null;
+        this._btnFast = null;
+        this._fastOnImg = null;
+        this._lbWinReward = null;
+        this._pnlGuideMb = null;
+
         this._reelsNode = null;
-        this._Data = null;
+        this._data = null;
         this._stripData = null;
-        this._isSpining = null;
+        this._payouts = null;
+
+        this._isSpinning = null;
+        this._isFast = null;
+        this._resultDelay = null;
     },
 
     _initValues: function () {
-        this._Data = cc.loader.getRes("res/data.json"); // JSON 가져오기
+        this._data = cc.loader.getRes("res/data.json"); // JSON 가져오기
 
-        if (this._Data) {
-            this._stripData = this._Data.strip; // strip 배열 가져오기
+        if (this._data) {
+            this._stripData = this._data.strip; // strip 배열 가져오기
+            this._payouts = this._data.payout;
+            cc.log(this._payouts);
         } else {
             cc.log("JSON 데이터를 찾을 수 없습니다.");
         }
 
-        this._isSpining = false;
+        this._isSpinning = false;
+        this._isFast = false;
+        this._resultDelay = 0.5;
     },
 
     _initUI: function () {
@@ -44,13 +57,26 @@ CinderellaGameNode = cc.Node.extend({
 
         this._bottomMenuUI.getChildByName("imgAutoBase").setVisible(false);
 
+        this._btnFast = this._bottomMenuUI.getChildByName("btnFast");
+        this._btnFast.addClickEventListener(this._toggleIsFast.bind(this));
+        this._fastOnImg = this._btnFast.getChildByName("imgFastOn");
+        this._fastOnImg.setVisible(false);
+
+        this._lbWinReward = this._bottomMenuUI.getChildByName("lbWinReward");
+        this._lbWinReward.setVisible(false);
+
+        this._pnlGuideMb = this._bottomMenuUI.getChildByName("pnlGuide_mb");
+        this._pnlGuideMb.setVisible(false);
+
+        this._bottomMenuUI.getChildByName("pnlGuide_pad").setVisible(false);
+
         //릴 관리 노드 생성
         var normalReelBack = this._background.getChildByName("imgBg").getChildByName("nodeReelBack");
         this._reelsNode = new CinderellaReelsNode(normalReelBack, this._stripData);
         this.addChild( this._reelsNode );
 
-        //노드의 자식 계층구조를 보기위한 함수
-        /*function printChildren(node, depth = 0) {
+        /*//노드의 자식 계층구조를 보기위한 함수
+        function printChildren(node, depth = 0) {
             if (!node) return;
 
             var prefix = " ".repeat(depth * 2); // 계층 깊이에 따라 들여쓰기 추가
@@ -64,11 +90,11 @@ CinderellaGameNode = cc.Node.extend({
 
         // 바텀 메뉴 UI의 전체 구조 출력
         cc.log("=== 전체 구조 ===");
-        printChildren(this._normalReelBackUI);*/
+        printChildren(this._bottomMenuUI);*/
     },
 
     _onSpin : function (){
-        if(this._isSpining){
+        if(this._isSpinning){
             this._spinStop();
             return;
         }
@@ -84,17 +110,29 @@ CinderellaGameNode = cc.Node.extend({
     },
 
     _spin : function (result){
-        var delay = 0.5;
-        this._reelsNode.spinEnd(result, delay, this.setisSpining.bind(this, false));
-        this.setisSpining(true);
+        this._reelsNode.spinEnd(result, this._resultDelay, this.setisSpinning.bind(this, false));
+        this.setisSpinning(true);
     },
 
     _spinStop : function () {
         this._reelsNode.spinStop();
-        this.setisSpining(false);
+        this.setisSpinning(false);
     },
 
-    setisSpining : function (isSpining) {
-        this._isSpining = isSpining;
+    setisSpinning : function (isSpinning) {
+        this._isSpinning = isSpinning;
+    },
+
+    _toggleIsFast : function () {
+        if(this._isFast){
+            this._isFast = false;
+            this._resultDelay = 0.5;
+            this._fastOnImg.setVisible(false);
+        }
+        else{
+            this._isFast = true;
+            this._resultDelay = 0.25;
+            this._fastOnImg.setVisible(true);
+        }
     }
 })

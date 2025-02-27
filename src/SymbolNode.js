@@ -12,6 +12,7 @@ SymbolNode = cc.Node.extend({
 
     _initProperties: function () {
         this.armature = null;
+        this.symbolNum = null;
     },
 
     _initValues: function () {
@@ -21,9 +22,19 @@ SymbolNode = cc.Node.extend({
     setSymbol: function (AR, index, mulSymbolSize) {
         this.setScale(this.getScale() * mulSymbolSize);
 
-        var armature = new ccs.Armature(AR[index]);
-        armature.getAnimation().play("normal");  // 애니메이션 실행
-        armature.setAnchorPoint(cc.p(0.5, 0.5));
-        this.addChild(armature);
+        this.armature = new ccs.Armature(AR[index]);
+        this.setAnimation("normal"); // 애니메이션 실행
+        this.armature.setAnchorPoint(cc.p(0.5, 0.5));
+        this.addChild(this.armature);
+
+        this.symbolNum = index;
+    },
+
+    setAnimation: function (animationType) {
+        this.armature.getAnimation().play(animationType);
+    },
+
+    getSymbolNum :function (){
+        return this.symbolNum;
     }
 })
