@@ -133,7 +133,7 @@ CinderellaReelsNode = cc.Node.extend({
                 this.unschedule(this._reelUpdates[index]);
                 this._reelUpdates[index] = null;
                 this.correctSymbolsPosition(index, this._spinResults);
-            })(reelIndex);
+            })(reelIndex).bind(this);
 
             this.scheduleOnce(this._reelStopSchedules[reelIndex], delay);
         }
