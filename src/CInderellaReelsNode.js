@@ -25,6 +25,9 @@ CinderellaReelsNode = cc.Node.extend({
         this._reelUpdates = null;
         this._spinResults = null;
         this._reelStopSchedules = null;
+        this._payoutCallback = null;
+        this._isSpinningCallback = null;
+        this._visibleSymbols = null;
     },
 
     _initValues: function (stripData) {
@@ -39,6 +42,12 @@ CinderellaReelsNode = cc.Node.extend({
         this._endPosY = this._startPosY - this._symbolHeight;
         this._reelUpdates = [];
         this._reelStopSchedules = [];
+        this._visibleSymbols = [];
+    },
+
+    initCallBacks : function (payoutCallback, isSpinningCallback) {
+        this._payoutCallback = payoutCallback;
+        this._isSpinningCallback = isSpinningCallback;
     },
 
     _initReels: function (normalReelBack) {
@@ -113,7 +122,8 @@ CinderellaReelsNode = cc.Node.extend({
         this.schedule(this._reelUpdates[reelIndex], 1 / 144);
     },
 
-    spinEnd: function(result, delayAdd, callback) {
+    // 스핀이 순서대로 잘 끝났을 때
+    spinEnd: function(result, delayAdd) {
         this._spinResults = result;
         var delay = 0;
         for (var reelIndex = 0; reelIndex < this._reels.length; reelIndex++) {
@@ -123,13 +133,13 @@ CinderellaReelsNode = cc.Node.extend({
                 this.unschedule(this._reelUpdates[index]);
                 this._reelUpdates[index] = null;
                 this.correctSymbolsPosition(index, this._spinResults);
-                if(index === this._reels.length - 1) {callback();}
             })(reelIndex);
 
             this.scheduleOnce(this._reelStopSchedules[reelIndex], delay);
         }
     },
 
+    // 중간에 STOP해서 멈출 때
     spinStop: function () {
         for (var reelIndex = 0; reelIndex < this._reels.length; reelIndex++) {
             if(this._reelUpdates[reelIndex] !== null){
@@ -163,15 +173,53 @@ CinderellaReelsNode = cc.Node.extend({
         }
         this.animateSymbolsOnStop(reelIndex, spinResult);
     },
+
     animateSymbolsOnStop: function (reelIndex, spinResult) {
         var symbols = this._symbolNodes[reelIndex];
 
-        // 선택된 심볼 인덱스 spinResult와 그 위쪽 3개 심볼에만 점프 애니메이션 적용
-        for (var symbolIndex = spinResult; symbolIndex < spinResult + 4; symbolIndex++) {
-            var index = symbolIndex >= symbols.length ? symbolIndex - symbols.length : symbolIndex;
-            symbols[index].runAction(
-                cc.sequence(cc.jumpBy(0.2, cc.p(0, 0), -20, 1)).easing(cc.easeBackOut())
-            );
+        for (var i = 0; i < 4; i++) {
+            var index = (spinResult + i) % symbols.length;
+            var jumpAction = cc.jumpBy(0.2, cc.p(0, 0), -20, 1).easing(cc.easeBackOut());
+            var action = reelIndex === this._reels.length - 1 && i === 3
+                ? cc.sequence(jumpAction, cc.callFunc(() => { this._getResultSymbols(); }, this))
+                : jumpAction;
+
+            symbols[index].runAction(action);
         }
-    }
+    },
+
+    _getResultSymbols: function () {
+        var resultSymbols = new Array(this._AR.length).fill(0);
+        this._visibleSymbols = [];
+
+        for (var reelIndex = 0; reelIndex < this._reels.length; reelIndex++) {
+            var symbols = this._symbolNodes[reelIndex];
+            var spinResult = this._spinResults[reelIndex];
+            for(i = 0 ; i < 3; i++){
+                var index = (spinResult + i) % symbols.length;
+                this._visibleSymbols.push(symbols[index]);
+                var resultIndex = symbols[index].getSymbolNum();
+                resultSymbols[resultIndex]++;
+            }
+        }
+
+        this._spinResults = null;
+        this._payoutCallback(resultSymbols);
+        this._isSpinningCallback();
+    },
+
+    playSymbolAnimation : function (targetSymbolNum) {
+        this._visibleSymbols?.forEach((symbol) => {
+            if(symbol.getSymbolNum() === targetSymbolNum){
+                symbol.setAnimation("play");
+            }
+        })
+    },
+
+    stopSymbolAnimation : function () {
+        this._visibleSymbols?.forEach((symbol) => {
+            symbol.setAnimation("normal");
+        })
+    },
+
 });

@@ -27,6 +27,8 @@ CinderellaGameNode = cc.Node.extend({
         this._isSpinning = null;
         this._isFast = null;
         this._resultDelay = null;
+        this._resultDelayFast = null;
+        this._enableSpin = false;
     },
 
     _initValues: function () {
@@ -35,14 +37,15 @@ CinderellaGameNode = cc.Node.extend({
         if (this._data) {
             this._stripData = this._data.strip; // strip 배열 가져오기
             this._payouts = this._data.payout;
-            cc.log(this._payouts);
         } else {
             cc.log("JSON 데이터를 찾을 수 없습니다.");
         }
 
         this._isSpinning = false;
         this._isFast = false;
-        this._resultDelay = 0.5;
+        this._resultDelay = 0.25;
+        this._resultDelayFast = 0.15;
+        this._enableSpin = true;
     },
 
     _initUI: function () {
@@ -68,11 +71,21 @@ CinderellaGameNode = cc.Node.extend({
         this._pnlGuideMb = this._bottomMenuUI.getChildByName("pnlGuide_mb");
         this._pnlGuideMb.setVisible(false);
 
+        // BMFont 레이블 생성
+        this._BMlabel = new cc.LabelBMFont(0, res.BMFont);
+        this._BMlabel.setPosition(this._pnlGuideMb.getPosition());
+        this._BMlabel.setVisible(false);
+        this.addChild(this._BMlabel);
+
         this._bottomMenuUI.getChildByName("pnlGuide_pad").setVisible(false);
 
         //릴 관리 노드 생성
         var normalReelBack = this._background.getChildByName("imgBg").getChildByName("nodeReelBack");
         this._reelsNode = new CinderellaReelsNode(normalReelBack, this._stripData);
+        this._reelsNode.initCallBacks(
+            this.calPayout.bind(this),
+            this.setIsSpinning.bind(this, false)
+        );
         this.addChild( this._reelsNode );
 
         /*//노드의 자식 계층구조를 보기위한 함수
@@ -94,10 +107,14 @@ CinderellaGameNode = cc.Node.extend({
     },
 
     _onSpin : function (){
+        if(!this._enableSpin) return;
+
         if(this._isSpinning){
             this._spinStop();
             return;
         }
+
+        this._reelsNode.stopSymbolAnimation();
 
         var rand = [];
         var max = this._stripData[0].length - 1;
@@ -110,29 +127,78 @@ CinderellaGameNode = cc.Node.extend({
     },
 
     _spin : function (result){
-        this._reelsNode.spinEnd(result, this._resultDelay, this.setisSpinning.bind(this, false));
-        this.setisSpinning(true);
+        var delay = this._resultDelay;
+        if(this._isFast) {delay = this._resultDelayFast;}
+
+        this._reelsNode.spinEnd(result, delay);
+        this.setIsSpinning(true);
     },
 
     _spinStop : function () {
         this._reelsNode.spinStop();
-        this.setisSpinning(false);
+        this.setIsSpinning(false);
+        this._setEnableSpin(false);
     },
 
-    setisSpinning : function (isSpinning) {
+    _setEnableSpin : function (enable) {
+        this._enableSpin = enable;
+    },
+
+    setIsSpinning : function (isSpinning) {
         this._isSpinning = isSpinning;
     },
 
     _toggleIsFast : function () {
         if(this._isFast){
             this._isFast = false;
-            this._resultDelay = 0.5;
             this._fastOnImg.setVisible(false);
         }
         else{
             this._isFast = true;
-            this._resultDelay = 0.25;
             this._fastOnImg.setVisible(true);
         }
+    },
+
+    calPayout : function (resultSymbols) {
+        var payouts = Object.values(this._payouts);
+        var highestPayout = 0;
+        var highestIndex = 0;
+
+        for(var index = 0; index < resultSymbols.length; index++) {
+            var payout = resultSymbols[index] * payouts[index];
+            if(payout > highestPayout){
+                highestPayout = payout;
+                highestIndex = index;
+            }
+        }
+
+        this._reelsNode.playSymbolAnimation(highestIndex);
+        this._showPayout(highestIndex, highestPayout);
+        this._setEnableSpin(true);
+    },
+
+    _showPayout : function (highestIndex, highestPayout) {
+        this._lbWinReward.setString(highestPayout);
+        this._lbWinReward.setVisible(true);
+
+        this._BMlabel.setVisible(true);
+
+        // 숫자가 점차적으로 늘어나는 애니메이션
+        var targetNumber = highestPayout; // 목표 숫자 (변경하려는 최종 숫자)
+        var duration = 2; // 애니메이션 시간 (초 단위)
+        var step = 25;
+
+        var currentNumber = 0;
+        var updateNumber = function () {
+            if (currentNumber < targetNumber) {
+                currentNumber += step;
+                if (currentNumber > targetNumber) currentNumber = targetNumber; // 목표 숫자 초과 방지
+                this._BMlabel.setString(currentNumber.toString()); // 숫자 갱신
+            } else {
+                this.unschedule(updateNumber); // 애니메이션 종료
+            }
+        };
+
+        this.schedule(updateNumber, 1 / 60); // 1/60초마다 updateNumber 호출
     }
 })
