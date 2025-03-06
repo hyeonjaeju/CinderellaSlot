@@ -11,6 +11,8 @@ CinderellaGameNode = cc.Node.extend({
     },
 
     _initProperties: function () {
+        this._state = null;
+
         this._background = null;
         this._bottomMenuUI = null;
         this._btnSpin = null;
@@ -143,9 +145,12 @@ CinderellaGameNode = cc.Node.extend({
     _spin : function (result){
         var delay = this._resultDelay;
         if(this._isFast) {delay = this._resultDelayFast;}
-
-        this._reelsNode.spinEnd(result, delay);
-        this.setIsSpinning(true);
+        this._setEnableSpin(false);
+        this.scheduleOnce(function() {
+            this._reelsNode.spinEnd(result, delay);
+            this.setIsSpinning(true);
+            this._setEnableSpin(true);
+        }, 0.3);  // 두 번째 인자는 딜레이 시간(초 단위)
     },
 
     _spinStop : function () {

@@ -29,7 +29,7 @@ var CinderellaLayer = cc.Layer.extend({
 
 
 
-var CinderellaScene = cc.Scene.extend({
+var Cinderella = cc.Scene.extend({
     onEnter: function () {
         this._super();
         var layer = new CinderellaLayer();

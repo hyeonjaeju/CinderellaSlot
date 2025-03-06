@@ -11,30 +11,51 @@ SymbolNode = cc.Node.extend({
     },
 
     _initProperties: function () {
-        this.armature = null;
+        this._armature = null;
         this.symbolNum = null;
+        this.stripIndex = null;
+        this._ARarr = null;
     },
 
     _initValues: function () {
-
+        this._ARarr = [];
     },
 
-    setSymbol: function (AR, index, mulSymbolSize) {
+    initSymbol: function (AR, index, mulSymbolSize, stripIndex) {
         this.setScale(this.getScale() * mulSymbolSize);
+        for (var i = 0; i < AR.length; i++) {
+            this._ARarr[i] = new ccs.Armature(AR[i]);
+            this._ARarr[i].getAnimation().play("normal");
+            this._ARarr[i].setAnchorPoint(cc.p(0.5, 0.5));
+            this.addChild(this._ARarr[i]);
+        }
 
-        this.armature = new ccs.Armature(AR[index]);
-        this.setAnimation("normal"); // 애니메이션 실행
-        this.armature.setAnchorPoint(cc.p(0.5, 0.5));
-        this.addChild(this.armature);
+        this.setSymbol(index, stripIndex);
+    },
 
+    setSymbol: function (index, stripIndex) {
+        this._invisibleAllAR();
         this.symbolNum = index;
+        this.stripIndex = stripIndex;
+        this._armature = this._ARarr[index];
+        this._armature.setVisible(true);
+    },
+
+    _invisibleAllAR: function () {
+        this._ARarr?.forEach((AR)=>{
+            AR.setVisible(false);
+        });
     },
 
     setAnimation: function (animationType) {
-        this.armature.getAnimation().play(animationType);
+        this._armature.getAnimation().play(animationType);
     },
 
     getSymbolNum :function (){
         return this.symbolNum;
+    },
+
+    getStripIndex : function (){
+        return this.stripIndex;
     }
 })
