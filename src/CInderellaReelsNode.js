@@ -19,7 +19,7 @@ CinderellaReelsNode = cc.Node.extend({
         this._reels = null;
         this._reelCount = null;
         this._reelHeight = null;
-        this._symbolNodes = null;
+        this._reelSymbols = null;
         this._symbolHeight = null;
         this._spinSpeed = null;
         this._mulSymbolSize = null;
@@ -33,6 +33,9 @@ CinderellaReelsNode = cc.Node.extend({
 
         this._spinEndCount = null;
         this._stripIndex = null;
+
+        this._symbolPoolManager = null;
+        this._moveToTimeRatio = null;
     },
 
     _initValues: function (stripData) {
@@ -41,9 +44,9 @@ CinderellaReelsNode = cc.Node.extend({
         this.stripData = stripData;
         this._reelCount = 0;
         this._reelHeight = 3; // 릴의 세로 길이(한번에 보이는 심볼의 수)
-        this._symbolNodes = [];
+        this._reelSymbols = [];
         this._symbolHeight = 105; // 심볼 간격 포함 높이
-        this._spinSpeed  = 35; // 스크롤 속도 (값이 클수록 빠름)
+        this._spinSpeed  = 20; // 스크롤 속도 (값이 클수록 빠름)
         this._mulSymbolSize = 0.95; //슬롯 사이즈랑 안맞을 때 변경
         this._startPosY = 60;
         this._endPosY = this._startPosY - this._symbolHeight;
@@ -52,6 +55,7 @@ CinderellaReelsNode = cc.Node.extend({
         this._visibleSymbols = [];
 
         this._spinEndCount = 0;
+        this._moveToTimeRatio = 55;
     },
 
     initCallBacks : function (payoutCallback, isSpinningCallback) {
@@ -64,15 +68,15 @@ CinderellaReelsNode = cc.Node.extend({
         this._reels = this._normalReelBack.getChildren();
         this._reelCount = this._reels.length;
 
-        for (var index = 0; index < this._reelCount; index++) {
+        for (var reelIndex = 0; reelIndex < this._reelCount; reelIndex++) {
             var layout = new ccui.Layout();
-            layout.setContentSize(this._reels[index].getContentSize());
+            layout.setContentSize(this._reels[reelIndex].getContentSize());
             layout.setClippingEnabled(true);
             layout.setPosition(cc.p(0, 0));
-            this._reels[index].addChild(layout);
-            this._reels[index].layout = layout;
+            this._reels[reelIndex].addChild(layout);
+            this._reels[reelIndex].layout = layout;
 
-            this._symbolNodes[index] = [];
+            this._reelSymbols[reelIndex] = [];
         }
     },
 
@@ -83,23 +87,24 @@ CinderellaReelsNode = cc.Node.extend({
             this._AR.push("sl_symbolAR0" + (i + 1));
         }
 
+        //심볼 풀링매니저 생성
+        this._symbolPoolManager = new SymbolPoolManager(SymbolNode);
+
         for (var reelIndex = 0; reelIndex < this._reelCount; reelIndex++) {
             var reel = this._reels[reelIndex];
+            var xPos = reel.getContentSize().width / 2;
             var layout = reel.layout;
             var strip = this.stripData[reelIndex];
 
             for (var symbolCount = 0; symbolCount < this._reelHeight+2; symbolCount++) {
                 var symbolIndex = strip[symbolCount] - 1; //strip은 1부터 시작 해서 내림
-                var symbolNode = new SymbolNode();
+                var symbolNode = this._symbolPoolManager.getSymbol();
                 symbolNode.initSymbol(this._AR, symbolIndex, this._mulSymbolSize, symbolCount);
 
-                symbolNode.setPosition(
-                    reel.getContentSize().width / 2, //해당 릴의 중앙
-                    this._startPosY + symbolCount * this._symbolHeight
-                );
+                symbolNode.setPosition(xPos, this._startPosY + symbolCount * this._symbolHeight);
 
                 layout.addChild(symbolNode, 1);
-                this._symbolNodes[reelIndex].push(symbolNode);
+                this._reelSymbols[reelIndex].push(symbolNode);
             }
         }
     },
@@ -110,37 +115,56 @@ CinderellaReelsNode = cc.Node.extend({
 
     _spinSymbols: function () {
         this._spinEndCount = 0;
-        this._stripIndex = [];
-        for(var i = 0; i < this._reelCount; ++i) {
-            this._stripIndex.push(0);
-        }
+        this._stripIndex = new Array(this._reelCount).fill(0);
 
-        this._reelUpdate = function(){
-            for(var reelIndex = 0; reelIndex < this._reelCount; reelIndex++) {
-                if(reelIndex < this._spinEndCount) {continue;}
+        if(this._visibleSymbols.length > 0) {
+            for(reelIndex = 0; reelIndex < this._reelCount; reelIndex++) {
+                var symbols = this._visibleSymbols[reelIndex];
+                var reel = this._reels[reelIndex];
+                var xPos = reel.getContentSize().width / 2;
 
-                var symbols = this._symbolNodes[reelIndex];
-                var strip = this.stripData[reelIndex];
-                var stripLength = strip.length;
-                var symbolNodeLength = symbols.length;
-                var stripIndex = this._stripIndex[reelIndex];
+                for(var index = 0 ; index < symbols.length ; index++){
+                    var symbol = symbols[index];
 
-                for (var symbolIndex = 0; symbolIndex < symbolNodeLength; symbolIndex++) {
-                    var symbol = symbols[symbolIndex];
-                    symbol.setPositionY(symbol.getPositionY() - this._spinSpeed);
+                    var targetY = this._startPosY - (index + 1) * this._symbolHeight;
 
-                    if(symbol.getPositionY() <= this._endPosY) {
-                        var prevStripIndex = stripIndex + this._reelHeight + 2;
-                        if(prevStripIndex >= stripLength) { prevStripIndex -= stripLength;}
-                        symbol.setSymbol(strip[prevStripIndex]-1, prevStripIndex);
+                    // 현재 Y 좌표와 목표 Y 좌표 차이 계산
+                    var distance = Math.abs(symbol.getPositionY() - targetY);
 
-                        var nextPosY = Math.max(...symbols.map(symbol => symbol.getPositionY())) + this._symbolHeight;
-                        symbol.setPositionY(nextPosY);
-                        stripIndex = stripIndex >= stripLength ? 0 : stripIndex + 1;
-                        this._stripIndex[reelIndex] = stripIndex;
-                    }
+                    // 시간을 속도에 맞게 계산 (시간 = 거리 / 속도)
+                    var timeToMove = distance / this._spinSpeed / this._moveToTimeRatio;
+                    symbol.runAction(cc.sequence(
+                        cc.moveTo(timeToMove, cc.p(xPos, targetY)),
+                        cc.callFunc(function(symbol) {
+                            this._symbolPoolManager.returnSymbol(symbol);
+                        }.bind(this, symbol))
+                    ));
                 }
             }
+            this._visibleSymbols = [];
+        }
+
+        this._reelUpdate = function() {
+            this._reelSymbols.forEach((symbols, reelIndex) => {
+                if (reelIndex < this._spinEndCount) return;
+
+                var strip = this.stripData[reelIndex];
+                var stripLength = strip.length;
+                var stripIndex = this._stripIndex[reelIndex];
+
+                symbols.forEach(symbol => {
+                    symbol.setPositionY(symbol.getPositionY() - this._spinSpeed);
+
+                    if (symbol.getPositionY() <= this._endPosY) {
+                        var prevStripIndex = (stripIndex + this._reelHeight + 2) % stripLength;
+                        symbol.setSymbol(strip[prevStripIndex] - 1, prevStripIndex);
+                        var nextPosY = Math.max(...symbols.map(s => s.getPositionY())) + this._symbolHeight;
+                        symbol.setPositionY(nextPosY);
+                        stripIndex = (stripIndex + 1) % stripLength;
+                        this._stripIndex[reelIndex] = stripIndex;
+                    }
+                });
+            });
         }.bind(this);
 
         this.schedule(this._reelUpdate, 1 / 144);
@@ -166,8 +190,8 @@ CinderellaReelsNode = cc.Node.extend({
     // 중간에 STOP해서 멈출 때
     spinStop: function () {
         for (var reelIndex = 0; reelIndex < this._reelCount; reelIndex++) {
-            if(this._reelUpdates[reelIndex] !== null){
-                this.unschedule(this._reelUpdates[reelIndex]);
+            if(reelIndex >= this._spinEndCount) {
+                this.unschedule(this._reelUpdate);
                 this.correctSymbolsPosition(reelIndex, this._spinResults);
                 this.unschedule(this._reelStopSchedules[reelIndex]);
                 this._reelStopSchedules[reelIndex] = null;
@@ -176,81 +200,116 @@ CinderellaReelsNode = cc.Node.extend({
     },
 
     correctSymbolsPosition: function (reelIndex, spinResults) {
-        var symbols = this._symbolNodes[reelIndex];
+        var reel = this._reels[reelIndex];
+        var layout = reel.layout;
+        var xPos = reel.getContentSize().width / 2;
         var spinResult = spinResults[reelIndex];
-        cc.log("스핀 결과: ", spinResult);
-        var selectedSymbol;
-        for(symbolIndex = 0; symbolIndex < symbols.length; symbolIndex++) {
-            var symbol = symbols[symbolIndex];
-            cc.log(symbol.getStripIndex());
-            if(symbol.getStripIndex() === spinResult){
-                selectedSymbol = symbol;
-            }
+        var strip = this.stripData[reelIndex];
+        var stripLength = strip.length;
+        var symbols = this._reelSymbols[reelIndex];
+        var highestY = Math.max(...symbols.map(symbol => symbol.getPositionY()));
+        let highestIndex = symbols.findIndex(symbol => symbol.getPositionY() === highestY);
+        var spawnPosY = highestY + this._symbolHeight;
+
+        this._visibleSymbols[reelIndex] = [];
+
+
+        for(index = 0 ; index < this._reelHeight; index++){
+            var stripIndex = (spinResult+index) % stripLength;
+            var symbolIndex = strip[stripIndex] -1;
+
+            var symbol = this._symbolPoolManager.getSymbol();
+            if(symbol.getIsNew()){ symbol.initSymbol(this._AR, symbolIndex, this._mulSymbolSize, stripIndex); }
+            else { symbol.setSymbol(symbolIndex, stripIndex); }
+
+            symbol.setPosition(cc.p(xPos, spawnPosY + index * this._symbolHeight));
+
+            this._visibleSymbols[reelIndex].push(symbol);
+            layout.addChild(symbol);
+
+            //애니메이션
+            var targetY = this._startPosY + index * this._symbolHeight;
+
+            // 현재 Y 좌표와 목표 Y 좌표 차이 계산
+            var distance = Math.abs(symbol.getPositionY() - targetY);
+
+            // 시간을 속도에 맞게 계산 (시간 = 거리 / 속도)
+            var timeToMove = distance / this._spinSpeed / this._moveToTimeRatio ;
+
+            symbol.runAction(cc.sequence(
+                cc.moveTo(timeToMove, cc.p(xPos, targetY)),
+                cc.jumpBy(0.1,cc.p(0,0), -10, 1),
+                cc.callFunc(function(index) {
+                    if (reelIndex === this._reelCount - 1 && index === this._reelHeight - 1) {
+                        this._getResultSymbols();
+                    }
+                }.bind(this, index)) // `bind(this, index)`로 `this`와 `index` 바인딩
+            ));
         }
 
-        // 선택된 심볼의 Y 위치를 시작 위치로 설정
-        selectedSymbol.setPositionY(this._startPosY);
+        //기존 심볼들 애니메이션
+        for(var index = 1 ; index <= symbols.length ; index++){
+            var symbol = symbols[highestIndex];
 
-        // spinResult 이후 심볼들 위치 설정
-        var posY = selectedSymbol.getPositionY() + this._symbolHeight;
-        for (var symbolIndex = spinResult + 1; symbolIndex < symbols.length; symbolIndex++) {
-            symbols[symbolIndex].setPositionY(posY);
-            posY += this._symbolHeight;
-        }
+            var stripIndex = (spinResult+index+2) % stripLength;
 
-        // spinResult 이전 심볼들 위치 설정
-        for (var symbolIndex = 0; symbolIndex < spinResult; symbolIndex++) {
-            symbols[symbolIndex].setPositionY(posY);
-            posY += this._symbolHeight;
-        }
-        this.animateSymbolsOnStop(reelIndex, spinResult);
-    },
+            var targetY = this._startPosY - index * this._symbolHeight;
 
-    animateSymbolsOnStop: function (reelIndex, spinResult) {
-        var symbols = this._symbolNodes[reelIndex];
+            // 현재 Y 좌표와 목표 Y 좌표 차이 계산
+            var distance = Math.abs(symbol.getPositionY() - targetY);
 
-        for (var i = 0; i < this._reelHeight + 1; i++) {
-            var index = (spinResult + i) % symbols.length;
-            var jumpAction = cc.jumpBy(0.2, cc.p(0, 0), -20, 1).easing(cc.easeBackOut());
-            var action = reelIndex === this._reelCount - 1 && i === 3
-                ? cc.sequence(jumpAction, cc.callFunc(() => { this._getResultSymbols(); }, this))
-                : jumpAction;
+            // 시간을 속도에 맞게 계산 (시간 = 거리 / 속도)
+            var timeToMove = distance / this._spinSpeed / this._moveToTimeRatio;
 
-            symbols[index].runAction(action);
+            symbol.runAction(cc.sequence(
+                cc.moveTo(timeToMove, cc.p(xPos, targetY)),
+                cc.callFunc(function(symbol, index, stripIndex) {
+                    var prevStripIndex = (stripIndex + this._reelHeight + 2) % stripLength;
+                    symbol.setSymbol(strip[prevStripIndex] - 1, prevStripIndex);
+                    var nextPosY = this._startPosY + this._symbolHeight * (index + 2);
+                    symbol.setPositionY(nextPosY);
+                    stripIndex = (stripIndex + 1) % stripLength;
+                    this._stripIndex[reelIndex] = stripIndex;
+                }.bind(this, symbol, index, stripIndex)),
+                cc.jumpBy(0.1,cc.p(0,0), -10, 1)
+            ));
+
+            highestIndex++;
+            highestIndex = highestIndex % symbols.length;
         }
     },
 
     _getResultSymbols: function () {
         var resultSymbols = new Array(this._AR.length).fill(0);
-        this._visibleSymbols = [];
 
         for (var reelIndex = 0; reelIndex < this._reelCount; reelIndex++) {
-            var symbols = this._symbolNodes[reelIndex];
-            var spinResult = this._spinResults[reelIndex];
-            for(i = 0 ; i < this._reelHeight; i++){
-                var index = (spinResult + i) % symbols.length;
-                this._visibleSymbols.push(symbols[index]);
-                var resultIndex = symbols[index].getSymbolNum();
+            for(index= 0 ; index < this._reelHeight; index++){
+                var resultIndex = this._visibleSymbols[reelIndex][index].getSymbolNum();
                 resultSymbols[resultIndex]++;
             }
         }
 
+        this.unschedule(this._reelUpdate);
         this._spinResults = null;
         this._payoutCallback(resultSymbols);
         this._isSpinningCallback();
     },
 
     playSymbolAnimation : function (targetSymbolNum) {
-        this._visibleSymbols?.forEach((symbol) => {
-            if(symbol.getSymbolNum() === targetSymbolNum){
-                symbol.setAnimation("play");
-            }
+        this._visibleSymbols?.forEach((symbols) => {
+            symbols.forEach((symbol) => {
+                if(symbol.getSymbolNum() === targetSymbolNum){
+                    symbol.setAnimation("play");
+                }
+            })
         })
     },
 
     stopSymbolAnimation : function () {
-        this._visibleSymbols?.forEach((symbol) => {
-            symbol.setAnimation("normal");
+        this._visibleSymbols?.forEach((symbols) => {
+            symbols.forEach((symbol) => {
+                symbol.setAnimation("normal");
+            })
         })
     },
 

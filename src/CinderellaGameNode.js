@@ -137,7 +137,6 @@ CinderellaGameNode = cc.Node.extend({
             rand.push(Math.random() * max | 0);
         }
 
-
         this._reelsNode.startSpin();
         this._spin(rand);
     },
@@ -186,7 +185,6 @@ CinderellaGameNode = cc.Node.extend({
 
         this._reelsNode.playSymbolAnimation(highestIndex);
         this._showPayout(highestIndex, highestPayout);
-        this._setEnableSpin(true);
     },
 
     _showPayout : function (highestIndex, highestPayout) {
@@ -194,7 +192,6 @@ CinderellaGameNode = cc.Node.extend({
 
         // 숫자가 점차적으로 늘어나는 애니메이션
         var targetNumber = highestPayout; // 목표 숫자 (변경하려는 최종 숫자)
-        var duration = 2; // 애니메이션 시간 (초 단위)
         var step = 25;
 
         var currentNumber = 0;
@@ -207,6 +204,7 @@ CinderellaGameNode = cc.Node.extend({
                 this.unschedule(updateNumber); // 애니메이션 종료
                 this._lbWinReward.setString(highestPayout);
                 this._lbWinReward.setVisible(true);
+                this._setEnableSpin(true);
             }
         }.bind(this);
 

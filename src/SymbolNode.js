@@ -15,10 +15,12 @@ SymbolNode = cc.Node.extend({
         this.symbolNum = null;
         this.stripIndex = null;
         this._ARarr = null;
+        this.isNew = null;
     },
 
     _initValues: function () {
         this._ARarr = [];
+        this.isNew = true;
     },
 
     initSymbol: function (AR, index, mulSymbolSize, stripIndex) {
@@ -31,6 +33,7 @@ SymbolNode = cc.Node.extend({
         }
 
         this.setSymbol(index, stripIndex);
+        this.isNew = false;
     },
 
     setSymbol: function (index, stripIndex) {
@@ -57,5 +60,9 @@ SymbolNode = cc.Node.extend({
 
     getStripIndex : function (){
         return this.stripIndex;
+    },
+
+    getIsNew : function (){
+        return this.isNew;
     }
 })
