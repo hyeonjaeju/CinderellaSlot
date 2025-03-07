@@ -117,6 +117,7 @@ CinderellaReelsNode = cc.Node.extend({
         this._spinEndCount = 0;
         this._stripIndex = new Array(this._reelCount).fill(0);
 
+        //전 결과 노드 내리기
         if(this._visibleSymbols.length > 0) {
             for(reelIndex = 0; reelIndex < this._reelCount; reelIndex++) {
                 var symbols = this._visibleSymbols[reelIndex];
@@ -127,12 +128,7 @@ CinderellaReelsNode = cc.Node.extend({
                     var symbol = symbols[index];
 
                     var targetY = this._startPosY - (index + 1) * this._symbolHeight;
-
-                    // 현재 Y 좌표와 목표 Y 좌표 차이 계산
-                    var distance = Math.abs(symbol.getPositionY() - targetY);
-
-                    // 시간을 속도에 맞게 계산 (시간 = 거리 / 속도)
-                    var timeToMove = distance / this._spinSpeed / this._moveToTimeRatio;
+                    var timeToMove = this._calculateTimeToMove(symbol, targetY);
                     symbol.runAction(cc.sequence(
                         cc.moveTo(timeToMove, cc.p(xPos, targetY)),
                         cc.callFunc(function(symbol) {
@@ -144,6 +140,7 @@ CinderellaReelsNode = cc.Node.extend({
             this._visibleSymbols = [];
         }
 
+        //릴 스핀
         this._reelUpdate = function() {
             this._reelSymbols.forEach((symbols, reelIndex) => {
                 if (reelIndex < this._spinEndCount) return;
@@ -168,6 +165,11 @@ CinderellaReelsNode = cc.Node.extend({
         }.bind(this);
 
         this.schedule(this._reelUpdate, 1 / 144);
+    },
+
+    _calculateTimeToMove : function(symbol, targetY) {
+        var distance = Math.abs(symbol.getPositionY() - targetY);
+        return distance / this._spinSpeed / this._moveToTimeRatio;
     },
 
     // 스핀이 순서대로 잘 끝났을 때
@@ -208,12 +210,13 @@ CinderellaReelsNode = cc.Node.extend({
         var stripLength = strip.length;
         var symbols = this._reelSymbols[reelIndex];
         var highestY = Math.max(...symbols.map(symbol => symbol.getPositionY()));
-        let highestIndex = symbols.findIndex(symbol => symbol.getPositionY() === highestY);
+        var highestIndex = symbols.findIndex(symbol => symbol.getPositionY() === highestY);
         var spawnPosY = highestY + this._symbolHeight;
 
         this._visibleSymbols[reelIndex] = [];
 
 
+        //심볼 생성 & 애니메이션
         for(index = 0 ; index < this._reelHeight; index++){
             var stripIndex = (spinResult+index) % stripLength;
             var symbolIndex = strip[stripIndex] -1;
@@ -229,12 +232,7 @@ CinderellaReelsNode = cc.Node.extend({
 
             //애니메이션
             var targetY = this._startPosY + index * this._symbolHeight;
-
-            // 현재 Y 좌표와 목표 Y 좌표 차이 계산
-            var distance = Math.abs(symbol.getPositionY() - targetY);
-
-            // 시간을 속도에 맞게 계산 (시간 = 거리 / 속도)
-            var timeToMove = distance / this._spinSpeed / this._moveToTimeRatio ;
+            var timeToMove = this._calculateTimeToMove(symbol, targetY);
 
             symbol.runAction(cc.sequence(
                 cc.moveTo(timeToMove, cc.p(xPos, targetY)),
@@ -243,23 +241,17 @@ CinderellaReelsNode = cc.Node.extend({
                     if (reelIndex === this._reelCount - 1 && index === this._reelHeight - 1) {
                         this._getResultSymbols();
                     }
-                }.bind(this, index)) // `bind(this, index)`로 `this`와 `index` 바인딩
+                }.bind(this, index))
             ));
         }
 
         //기존 심볼들 애니메이션
         for(var index = 1 ; index <= symbols.length ; index++){
             var symbol = symbols[highestIndex];
-
             var stripIndex = (spinResult+index+2) % stripLength;
 
             var targetY = this._startPosY - index * this._symbolHeight;
-
-            // 현재 Y 좌표와 목표 Y 좌표 차이 계산
-            var distance = Math.abs(symbol.getPositionY() - targetY);
-
-            // 시간을 속도에 맞게 계산 (시간 = 거리 / 속도)
-            var timeToMove = distance / this._spinSpeed / this._moveToTimeRatio;
+            var timeToMove = this._calculateTimeToMove(symbol, targetY);
 
             symbol.runAction(cc.sequence(
                 cc.moveTo(timeToMove, cc.p(xPos, targetY)),
