@@ -16,10 +16,16 @@ CinderellaGameNode = cc.Node.extend({
         this._background = null;
         this._bottomMenuUI = null;
         this._btnSpin = null;
+        this._btnAutoSpin = null;
+        this._autoPanel = null;
+        this._autoBtnArray = null;
         this._btnFast = null;
         this._fastOnImg = null;
         this._lbWinReward = null;
         this._pnlGuideMb = null;
+
+        this._autoCount = null;
+        this._autoInfinity = null;
 
         this._reelsNode = null;
         this._data = null;
@@ -31,7 +37,7 @@ CinderellaGameNode = cc.Node.extend({
         this._isFast = null;
         this._resultDelay = null;
         this._resultDelayFast = null;
-        this._enableSpin = false;
+        this._spinBtnLong = null;
     },
 
     _initValues: function () {
@@ -45,11 +51,13 @@ CinderellaGameNode = cc.Node.extend({
             cc.log("JSON 데이터를 찾을 수 없습니다.");
         }
 
+        this._autoCount = 0;
+        this._autoInfinity = false;
+
         this._isSpinning = false;
         this._isFast = false;
         this._resultDelay = 0.25;
         this._resultDelayFast = 0.15;
-        this._enableSpin = true;
     },
 
     _initUI: function () {
@@ -67,11 +75,68 @@ CinderellaGameNode = cc.Node.extend({
         this._bottomMenuUI = ccs.uiReader.widgetFromJsonFile(res.BottomMenuUI);
         this.addChild(this._bottomMenuUI);
 
-        //스핀
+        //스핀 버튼
         this._btnSpin = this._bottomMenuUI.getChildByName("imgSpinBase").getChildByName("btnSpin");
-        this._btnSpin.addClickEventListener(this._onSpin.bind(this));
-        //오토
-        this._bottomMenuUI.getChildByName("imgAutoBase").setVisible(false);
+
+        this._btnSpin.addTouchEventListener((sender, type) => {
+            switch (type) {
+                case 0:
+                    this._spinBtnLong = false;
+                    this._autoPanel.setVisible(false);
+                    this.scheduleOnce(this._onAutoPanelOpen, 0.75);
+                    return true; // 터치 시작을 받아들임
+                case 2:
+                    if(!this._spinBtnLong){
+                        this.unschedule(this._onAutoPanelOpen);
+                        this._onSpin();
+                    }
+                    return true; // 이벤트 처리 완료
+                default:
+                    return false;
+            }
+        }, this);
+
+        //오토 스핀 버튼
+        this._btnAutoSpin = this._bottomMenuUI.getChildByName("imgSpinBase").getChildByName("btnAutoSpin");
+        this._btnAutoSpin.setEnabled(false);
+        this._btnAutoSpin.setVisible(false);
+        this._lbAutoSpin = this._btnAutoSpin.getChildByName("lbAutoSpin");
+
+        this._btnAutoSpin.addTouchEventListener((sender, type) => {
+            switch (type) {
+                case 0:
+                    this._spinBtnLong = true;
+                    this._autoPanel.setVisible(false);
+                    this.scheduleOnce(this._stopAuto, 0.75);
+                    return true; // 터치 시작을 받아들임
+                case 2:
+                    if(this._spinBtnLong){
+                        this.unschedule(this._stopAuto);
+                    }
+                    return true; // 이벤트 처리 완료
+                default:
+                    return false;
+            }
+        }, this);
+
+        //오토 패널
+        this._autoPanel = this._bottomMenuUI.getChildByName("imgAutoBase");
+        this._autoPanel.setVisible(false);
+        this._autoBtnArray = this._autoPanel.getChildren();
+        this._autoBtnArray.forEach(function (btn, index) {
+            var labelText = null;
+            if(index !== this._autoBtnArray.length - 1)
+                labelText = btn.getChildren()[0].getString();  // 라벨의 텍스트 가져오기
+
+            var count = 0;
+            if(labelText !== null)
+                count = parseInt(labelText);
+
+            var isInfinity = count <= 0;
+
+            btn.addClickEventListener(this._startAuto.bind(this, count, isInfinity));
+        }.bind(this))
+
         //FAST
         this._btnFast = this._bottomMenuUI.getChildByName("btnFast");
         this._btnFast.addClickEventListener(this._toggleIsFast.bind(this));
@@ -107,23 +172,60 @@ CinderellaGameNode = cc.Node.extend({
 
         // 바텀 메뉴 UI의 전체 구조 출력
         cc.log("=== 전체 구조 ===");
-        printChildren(this._bottomMenuUI);
-        */
+        printChildren(this._bottomMenuUI);*/
     },
 
     _initReels: function () {
         var normalReelBack = this._background.getChildByName("imgBg").getChildByName("nodeReelBack");
         this._reelsNode = new CinderellaReelsNode(normalReelBack, this._stripData);
         this._reelsNode.initCallBacks(
-            this.calPayout.bind(this),
-            this.setIsSpinning.bind(this, false)
+            this.calPayout.bind(this)
         );
         this.addChild( this._reelsNode );
     },
 
-    _onSpin : function (){
-        if(!this._enableSpin) return;
+    _onAutoPanelOpen: function () {
+        this._autoPanel.setVisible(true);
+        this._spinBtnLong = true;
+    },
 
+    _startAuto: function (count, isInfinity){
+        if(this._isSpinning) { return; }
+
+        this._autoPanel.setVisible(false);
+        this._autoCount = count;
+        this._autoInfinity = isInfinity;
+        this._lbAutoSpin.setString(this._autoCount);
+        this._btnAutoSpin.setEnabled(true);
+        this._btnAutoSpin.setVisible(true);
+        this._useAuto();
+    },
+
+    _stopAuto: function () {
+        this._autoCount = 0;
+        this._autoInfinity = false;
+        this._btnAutoSpin.setEnabled(false);
+        this._btnAutoSpin.setVisible(false);
+    },
+
+    _useAuto : function () {
+        if(this._autoInfinity){
+            this._onSpin();
+            return;
+        }
+
+        if(this._autoCount <= 0){
+            this._btnAutoSpin.setEnabled(false);
+            this._btnAutoSpin.setVisible(false);
+            return;
+        }
+
+        this._autoCount--;
+        this._lbAutoSpin.setString(this._autoCount);
+        this._onSpin();
+    },
+
+    _onSpin : function (){
         if(this._isSpinning){
             this._spinStop();
             return;
@@ -147,22 +249,23 @@ CinderellaGameNode = cc.Node.extend({
         this._setEnableSpin(false);
         this.scheduleOnce(function() {
             this._reelsNode.spinEnd(result, delay);
-            this.setIsSpinning(true);
+            this._setIsSpinning(true);
             this._setEnableSpin(true);
         }, 0.3);  // 두 번째 인자는 딜레이 시간(초 단위)
     },
 
     _spinStop : function () {
         this._reelsNode.spinStop();
-        this.setIsSpinning(false);
+        this._setIsSpinning(false);
         this._setEnableSpin(false);
     },
 
     _setEnableSpin : function (enable) {
-        this._enableSpin = enable;
+        this._btnSpin.setEnabled(enable);
+        this._btnSpin.setOpacity(enable ? 255 : 128);
     },
 
-    setIsSpinning : function (isSpinning) {
+    _setIsSpinning : function (isSpinning) {
         this._isSpinning = isSpinning;
     },
 
@@ -202,9 +305,13 @@ CinderellaGameNode = cc.Node.extend({
                 this._BMlabel.setString(currentNumber.toString()); // 숫자 갱신
             } else {
                 this.unschedule(updateNumber); // 애니메이션 종료
-                this._lbWinReward.setString(highestPayout);
+                this._lbWinReward.setString(targetNumber);
                 this._lbWinReward.setVisible(true);
+
+                //버튼 클릭 활성화
                 this._setEnableSpin(true);
+                this._setIsSpinning(false);
+                this._useAuto();
             }
         }.bind(this);
 
