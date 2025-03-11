@@ -8,6 +8,7 @@ CinderellaGameNode = cc.Node.extend({
         this._initProperties();
         this._initValues();
         this._initUI();
+        this._setState(new IdleState(this));
     },
 
     _initProperties: function () {
@@ -54,7 +55,7 @@ CinderellaGameNode = cc.Node.extend({
         this._autoCount = 0;
         this._autoInfinity = false;
 
-        this._isSpinning = false;
+        //this._isSpinning = false;
         this._isFast = false;
         this._resultDelay = 0.25;
         this._resultDelayFast = 0.15;
@@ -62,8 +63,9 @@ CinderellaGameNode = cc.Node.extend({
 
     _initUI: function () {
         this._initBackground();
-        this._initBottomMenu();
         this._initReels();
+
+        this._initBottomMenu();
     },
 
     _initBackground: function () {
@@ -88,7 +90,7 @@ CinderellaGameNode = cc.Node.extend({
                 case 2:
                     if(!this._spinBtnLong){
                         this.unschedule(this._onAutoPanelOpen);
-                        this._onSpin();
+                        this._state.onSpin();
                     }
                     return true; // 이벤트 처리 완료
                 default:
@@ -134,7 +136,9 @@ CinderellaGameNode = cc.Node.extend({
 
             var isInfinity = count <= 0;
 
-            btn.addClickEventListener(this._startAuto.bind(this, count, isInfinity));
+            btn.addClickEventListener(()=>{
+                this._state.startAuto(count, isInfinity);
+            });
         }.bind(this))
 
         //FAST
@@ -185,6 +189,12 @@ CinderellaGameNode = cc.Node.extend({
         this.addChild( this._reelsNode );
     },
 
+    _setState: function (newState) {
+        if (this._state) this._state.exit();
+        this._state = newState;
+        this._state.enter();
+    },
+
     onReelSpinStart:function (){
         this._setEnableSpin(false);
     },
@@ -195,7 +205,7 @@ CinderellaGameNode = cc.Node.extend({
     },
 
     _startAuto: function (count, isInfinity){
-        if(this._isSpinning) { return; }
+        if(this._state === GameState.SPINNING) { return; }
 
         this._autoPanel.setVisible(false);
         this._autoCount = count;
@@ -215,7 +225,7 @@ CinderellaGameNode = cc.Node.extend({
 
     _useAuto : function () {
         if(this._autoInfinity){
-            this._onSpin();
+            this._state.onSpin();
             return;
         }
 
@@ -227,15 +237,10 @@ CinderellaGameNode = cc.Node.extend({
 
         this._autoCount--;
         this._lbAutoSpin.setString(this._autoCount);
-        this._onSpin();
+        this._state.onSpin();
     },
 
     _onSpin : function (){
-        if(this._isSpinning){
-            this._spinStop();
-            return;
-        }
-
         this._reelsNode.stopSymbolAnimation();
 
         //임시로 5개 고정
@@ -245,33 +250,30 @@ CinderellaGameNode = cc.Node.extend({
             rand.push(Math.random() * max | 0);
         }
 
-        this._reelsNode.startSpin();
         this._spin(rand);
     },
 
     _spin : function (result){
+        this._reelsNode.startSpin();
+
+        //스핀 종료 딜레이 스케쥴
         var delay = this._resultDelay;
         if(this._isFast) {delay = this._resultDelayFast;}
+
         this.scheduleOnce(function() {
             this._reelsNode.spinEnd(result, delay);
-            this._setIsSpinning(true);
             this._setEnableSpin(true);
-        }, 0.3);  // 두 번째 인자는 딜레이 시간(초 단위)
+        }, 0.3);
     },
 
     _spinStop : function () {
         this._reelsNode.spinStop();
-        this._setIsSpinning(false);
         this._setEnableSpin(false);
     },
 
     _setEnableSpin : function (enable) {
         this._btnSpin.setEnabled(enable);
         this._btnSpin.setOpacity(enable ? 255 : 128);
-    },
-
-    _setIsSpinning : function (isSpinning) {
-        this._isSpinning = isSpinning;
     },
 
     _toggleIsFast : function () {
@@ -301,6 +303,7 @@ CinderellaGameNode = cc.Node.extend({
         // 숫자가 점차적으로 늘어나는 애니메이션
         var targetNumber = highestPayout; // 목표 숫자 (변경하려는 최종 숫자)
         var step = 25;
+        this._setState(new ResultState(this));
 
         var currentNumber = 0;
         var updateNumber = function () {
@@ -313,9 +316,7 @@ CinderellaGameNode = cc.Node.extend({
                 this._lbWinReward.setString(targetNumber);
                 this._lbWinReward.setVisible(true);
 
-                //버튼 클릭 활성화
-                this._setEnableSpin(true);
-                this._setIsSpinning(false);
+                this._setState(new IdleState(this));
                 this._useAuto();
             }
         }.bind(this);

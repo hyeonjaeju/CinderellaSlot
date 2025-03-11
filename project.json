@@ -19,6 +19,7 @@
         "src/CinderellaReelsNode.js",
         "src/SymbolNode.js",
         "src/SymbolPoolManager.js",
-        "src/EventEmitter.js"
+        "src/EventEmitter.js",
+        "src/GameState.js"
     ]
 }

@@ -10,14 +10,6 @@ var ReelEvents = {
     RESULT_CALCULATED: "result_calculated"
 };
 
-// 게임 상태 정의
-var GameState = {
-    IDLE: "idle",
-    SPINNING: "spinning",
-    SHOWING_RESULT: "showing_result",
-    AUTO_SPINNING: "auto_spinning"
-};
-
 // 심볼 인덱스 정의
 var SymbolIndex = {
     NORMAL: 0,
