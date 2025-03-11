@@ -178,10 +178,15 @@ CinderellaGameNode = cc.Node.extend({
     _initReels: function () {
         var normalReelBack = this._background.getChildByName("imgBg").getChildByName("nodeReelBack");
         this._reelsNode = new CinderellaReelsNode(normalReelBack, this._stripData);
-        this._reelsNode.initCallBacks(
-            this.calPayout.bind(this)
-        );
+
+        this._reelsNode.on(ReelEvents.SPIN_START, this.onReelSpinStart, this);
+        this._reelsNode.on(ReelEvents.ALL_REELS_STOPPED, this.calPayout, this);
+
         this.addChild( this._reelsNode );
+    },
+
+    onReelSpinStart:function (){
+        this._setEnableSpin(false);
     },
 
     _onAutoPanelOpen: function () {
@@ -233,6 +238,7 @@ CinderellaGameNode = cc.Node.extend({
 
         this._reelsNode.stopSymbolAnimation();
 
+        //임시로 5개 고정
         var rand = [];
         var max = this._stripData[0].length - 1;
         for (var count = 0; count < 5; count++) {
@@ -246,7 +252,6 @@ CinderellaGameNode = cc.Node.extend({
     _spin : function (result){
         var delay = this._resultDelay;
         if(this._isFast) {delay = this._resultDelayFast;}
-        this._setEnableSpin(false);
         this.scheduleOnce(function() {
             this._reelsNode.spinEnd(result, delay);
             this._setIsSpinning(true);

@@ -5,10 +5,25 @@ CinderellaReelsNode = cc.Node.extend({
     },
 
     _init: function (normalReelBack, stripData) {
+        this._initEventEmitter();
         this._initProperties();
         this._initValues(stripData);
         this._initReels(normalReelBack);
         this._initSymbols();
+    },
+
+    _initEventEmitter: function () {
+        this._eventEmitter = new EventEmitter();
+    },
+
+    // 이벤트 리스너 추가 메소드
+    on: function(eventType, callback, target) {
+        this._eventEmitter.on(eventType, callback, target);
+    },
+
+    // 이벤트 리스너 제거 메소드
+    off: function(eventType, callback, target) {
+        this._eventEmitter.off(eventType, callback, target);
     },
 
     _initProperties: function () {
@@ -27,7 +42,6 @@ CinderellaReelsNode = cc.Node.extend({
         this._spinResults = null;
         this._reelUpdate = null;
         this._reelStopSchedules = null;
-        this._payoutCallback = null;
         this._visibleSymbols = null;
 
         this._spinEndCount = null;
@@ -54,10 +68,6 @@ CinderellaReelsNode = cc.Node.extend({
 
         this._spinEndCount = 0;
         this._moveToTimeRatio = 55;
-    },
-
-    initCallBacks : function (payoutCallback, isSpinningCallback) {
-        this._payoutCallback = payoutCallback;
     },
 
     _initReels: function (normalReelBack) {
@@ -107,6 +117,7 @@ CinderellaReelsNode = cc.Node.extend({
     },
 
     startSpin: function () {
+        this._eventEmitter.emit(ReelEvents.SPIN_START);
         this._spinSymbols();
     },
 
@@ -116,7 +127,7 @@ CinderellaReelsNode = cc.Node.extend({
 
         //전 결과 노드 내리기
         if(this._visibleSymbols.length > 0) {
-            for(reelIndex = 0; reelIndex < this._reelCount; reelIndex++) {
+            for(var reelIndex = 0; reelIndex < this._reelCount; reelIndex++) {
                 var symbols = this._visibleSymbols[reelIndex];
                 var reel = this._reels[reelIndex];
                 var xPos = reel.getContentSize().width / 2;
@@ -276,7 +287,7 @@ CinderellaReelsNode = cc.Node.extend({
 
         this.unschedule(this._reelUpdate);
         this._spinResults = null;
-        this._payoutCallback(resultSymbols);
+        this._eventEmitter.emit(ReelEvents.ALL_REELS_STOPPED, resultSymbols);
     },
 
     playSymbolAnimation : function (targetSymbolNum) {
