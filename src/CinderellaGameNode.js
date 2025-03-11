@@ -183,8 +183,8 @@ CinderellaGameNode = cc.Node.extend({
         var normalReelBack = this._background.getChildByName("imgBg").getChildByName("nodeReelBack");
         this._reelsNode = new CinderellaReelsNode(normalReelBack, this._stripData);
 
-        this._reelsNode.on(ReelEvents.SPIN_START, this.onReelSpinStart, this);
-        this._reelsNode.on(ReelEvents.ALL_REELS_STOPPED, this.calPayout, this);
+        cc.eventManager.addCustomListener(ReelEvents.SPIN_START, this.onReelSpinStart.bind(this));
+        cc.eventManager.addCustomListener(ReelEvents.ALL_REELS_STOPPED, this.calcPayout.bind(this));
 
         this.addChild( this._reelsNode );
     },
@@ -281,7 +281,7 @@ CinderellaGameNode = cc.Node.extend({
         this._fastOnImg.setVisible(this._isFast);
     },
 
-    calPayout : function (resultSymbols) {
+    calcPayout : function (resultSymbols) {
         var highestPayout = 0;
         var highestIndex = 0;
 

@@ -5,25 +5,10 @@ CinderellaReelsNode = cc.Node.extend({
     },
 
     _init: function (normalReelBack, stripData) {
-        this._initEventEmitter();
         this._initProperties();
         this._initValues(stripData);
         this._initReels(normalReelBack);
         this._initSymbols();
-    },
-
-    _initEventEmitter: function () {
-        this._eventEmitter = new EventEmitter();
-    },
-
-    // 이벤트 리스너 추가 메소드
-    on: function(eventType, callback, target) {
-        this._eventEmitter.on(eventType, callback, target);
-    },
-
-    // 이벤트 리스너 제거 메소드
-    off: function(eventType, callback, target) {
-        this._eventEmitter.off(eventType, callback, target);
     },
 
     _initProperties: function () {
@@ -49,6 +34,9 @@ CinderellaReelsNode = cc.Node.extend({
 
         this._symbolPoolManager = null;
         this._moveToTimeRatio = null;
+
+        this._spinStartEvent = null;
+        this._allReelsStoppedEvent = null;
     },
 
     _initValues: function (stripData) {
@@ -68,6 +56,9 @@ CinderellaReelsNode = cc.Node.extend({
 
         this._spinEndCount = 0;
         this._moveToTimeRatio = 55;
+
+        this._spinStartEvent = new cc.EventCustom(ReelEvents.SPIN_START);
+        this._allReelsStoppedEvent = new cc.EventCustom(ReelEvents.ALL_REELS_STOPPED);
     },
 
     _initReels: function (normalReelBack) {
@@ -117,7 +108,7 @@ CinderellaReelsNode = cc.Node.extend({
     },
 
     startSpin: function () {
-        this._eventEmitter.emit(ReelEvents.SPIN_START);
+        cc.eventManager.dispatchEvent(this._spinStartEvent);
         this._spinSymbols();
     },
 
@@ -138,7 +129,7 @@ CinderellaReelsNode = cc.Node.extend({
                     var targetY = this._startPosY - (index + 1) * this._symbolHeight;
                     var timeToMove = this._calculateTimeToMove(symbol, targetY);
                     symbol.runAction(cc.sequence(
-                        cc.moveTo(timeToMove * 0.9, cc.p(xPos, targetY)),
+                        cc.moveTo(timeToMove * 0.8, cc.p(xPos, targetY)),
                         cc.callFunc(function(symbol) {
                             this._symbolPoolManager.returnSymbol(symbol);
                         }.bind(this, symbol))
@@ -287,7 +278,8 @@ CinderellaReelsNode = cc.Node.extend({
 
         this.unschedule(this._reelUpdate);
         this._spinResults = null;
-        this._eventEmitter.emit(ReelEvents.ALL_REELS_STOPPED, resultSymbols);
+
+        cc.eventManager.dispatchEvent(this._allReelsStoppedEvent);
     },
 
     playSymbolAnimation : function (targetSymbolNum) {
