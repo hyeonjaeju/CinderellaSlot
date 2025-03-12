@@ -31,9 +31,9 @@ CinderellaReelsNode = cc.Node.extend({
 
         this._spinEndCount = null;
         this._stripIndex = null;
+        this._remainingSymbols = null;
 
         this._symbolPoolManager = null;
-        this._moveToTimeRatio = null;
 
         this._spinStartEvent = null;
         this._allReelsStoppedEvent = null;
@@ -47,7 +47,7 @@ CinderellaReelsNode = cc.Node.extend({
         this._reelHeight = 3; // 릴의 세로 길이(한번에 보이는 심볼의 수)
         this._reelSymbols = [];
         this._symbolHeight = 105; // 심볼 간격 포함 높이
-        this._spinSpeed  = 20; // 스크롤 속도 (값이 클수록 빠름)
+        this._spinSpeed  = 800; // 스크롤 속도 (값이 클수록 빠름)
         this._mulSymbolSize = 0.95; //슬롯 사이즈랑 안맞을 때 변경
         this._startPosY = 60;
         this._endPosY = this._startPosY - this._symbolHeight;
@@ -115,22 +115,23 @@ CinderellaReelsNode = cc.Node.extend({
     _spinSymbols: function () {
         this._spinEndCount = 0;
         this._stripIndex = new Array(this._reelCount).fill(0);
+        this._remainingSymbols = this._reelCount * (this._reelHeight*2 + 2);
 
         //전 결과 노드 내리기
-        if(this._visibleSymbols.length > 0) {
-            for(var reelIndex = 0; reelIndex < this._reelCount; reelIndex++) {
+        if (this._visibleSymbols.length > 0) {
+            for (var reelIndex = 0; reelIndex < this._reelCount; reelIndex++) {
                 var symbols = this._visibleSymbols[reelIndex];
                 var reel = this._reels[reelIndex];
                 var xPos = reel.getContentSize().width / 2;
 
-                for(var index = 0 ; index < symbols.length ; index++){
+                for (var index = 0; index < symbols.length; index++) {
                     var symbol = symbols[index];
 
                     var targetY = this._startPosY - (index + 1) * this._symbolHeight;
                     var timeToMove = this._calculateTimeToMove(symbol, targetY);
                     symbol.runAction(cc.sequence(
-                        cc.moveTo(timeToMove * 0.8, cc.p(xPos, targetY)),
-                        cc.callFunc(function(symbol) {
+                        cc.moveTo(timeToMove, cc.p(xPos, targetY)),
+                        cc.callFunc(function (symbol) {
                             this._symbolPoolManager.returnSymbol(symbol);
                         }.bind(this, symbol))
                     ));
@@ -140,7 +141,10 @@ CinderellaReelsNode = cc.Node.extend({
         }
 
         //릴 스핀
-        this._reelUpdate = function() {
+        this._reelUpdate = function (dt) {
+            // dt를 사용하여 프레임 독립적인 이동 거리 계산
+            const frameIndependentSpeed = this._spinSpeed * dt;
+
             this._reelSymbols.forEach((symbols, reelIndex) => {
                 if (reelIndex < this._spinEndCount) return;
 
@@ -149,7 +153,8 @@ CinderellaReelsNode = cc.Node.extend({
                 var stripIndex = this._stripIndex[reelIndex];
 
                 symbols.forEach(symbol => {
-                    symbol.setPositionY(symbol.getPositionY() - this._spinSpeed);
+                    // dt를 이용한 이동 거리 계산으로 프레임 독립적인 움직임 구현
+                    symbol.setPositionY(symbol.getPositionY() - frameIndependentSpeed);
 
                     if (symbol.getPositionY() <= this._endPosY) {
                         var prevStripIndex = (stripIndex + this._reelHeight + 2) % stripLength;
@@ -163,12 +168,16 @@ CinderellaReelsNode = cc.Node.extend({
             });
         }.bind(this);
 
-        this.schedule(this._reelUpdate, 1 / 144);
+        this.scheduleUpdate();
+
+        this.update = function (dt) {
+            this._reelUpdate(dt);
+        };
     },
 
     _calculateTimeToMove : function(symbol, targetY) {
         var distance = Math.abs(symbol.getPositionY() - targetY);
-        return distance / this._spinSpeed / this._moveToTimeRatio;
+        return distance / this._spinSpeed;
     },
 
     // 스핀이 순서대로 잘 끝났을 때
@@ -191,7 +200,7 @@ CinderellaReelsNode = cc.Node.extend({
     spinStop: function () {
         for (var reelIndex = 0; reelIndex < this._reelCount; reelIndex++) {
             if(reelIndex >= this._spinEndCount) {
-                this.unschedule(this._reelUpdate);
+                this._spinEndCount++;
                 this.correctSymbolsPosition(reelIndex, this._spinResults);
                 this.unschedule(this._reelStopSchedules[reelIndex]);
                 this._reelStopSchedules[reelIndex] = null;
@@ -215,7 +224,7 @@ CinderellaReelsNode = cc.Node.extend({
 
 
         //심볼 생성 & 애니메이션
-        for(index = 0 ; index < this._reelHeight; index++){
+        for(var index = 0 ; index < this._reelHeight; index++){
             var stripIndex = (spinResult+index) % stripLength;
             var symbolIndex = strip[stripIndex] -1;
 
@@ -232,6 +241,8 @@ CinderellaReelsNode = cc.Node.extend({
             var targetY = this._startPosY + index * this._symbolHeight;
             var timeToMove = this._calculateTimeToMove(symbol, targetY);
 
+            this._checkAllSymbolsStopped(timeToMove);
+
             symbol.runAction(cc.sequence(
                 cc.moveTo(timeToMove, cc.p(xPos, targetY)),
                 cc.jumpBy(0.1,cc.p(0,0), -10, 1)
@@ -245,6 +256,8 @@ CinderellaReelsNode = cc.Node.extend({
 
             var targetY = this._startPosY - index * this._symbolHeight;
             var timeToMove = this._calculateTimeToMove(symbol, targetY);
+
+            this._checkAllSymbolsStopped(timeToMove);
 
             symbol.runAction(cc.sequence(
                 cc.moveTo(timeToMove, cc.p(xPos, targetY)),
@@ -262,15 +275,21 @@ CinderellaReelsNode = cc.Node.extend({
             highestIndex++;
             highestIndex = highestIndex % symbols.length;
         }
-        if(reelIndex === this._reelCount - 1)
-            this.scheduleOnce(this._getResultSymbols,0.75);
+    },
+
+    _checkAllSymbolsStopped: function (timeToMove) {
+        this._remainingSymbols--;
+        if(this._remainingSymbols <= 0) {
+            this.unscheduleUpdate();
+            this.scheduleOnce(this._getResultSymbols, timeToMove);
+        }
     },
 
     _getResultSymbols: function () {
         var resultSymbols = new Array(this._AR.length).fill(0);
 
         for (var reelIndex = 0; reelIndex < this._reelCount; reelIndex++) {
-            for(index= 0 ; index < this._reelHeight; index++){
+            for(var index= 0 ; index < this._reelHeight; index++){
                 var resultIndex = this._visibleSymbols[reelIndex][index].getSymbolNum();
                 resultSymbols[resultIndex]++;
             }
