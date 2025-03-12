@@ -279,6 +279,7 @@ CinderellaReelsNode = cc.Node.extend({
         this.unschedule(this._reelUpdate);
         this._spinResults = null;
 
+        this._allReelsStoppedEvent.resultSymbols = resultSymbols;
         cc.eventManager.dispatchEvent(this._allReelsStoppedEvent);
     },
 

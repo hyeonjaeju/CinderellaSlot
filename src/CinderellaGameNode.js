@@ -281,7 +281,8 @@ CinderellaGameNode = cc.Node.extend({
         this._fastOnImg.setVisible(this._isFast);
     },
 
-    calcPayout : function (resultSymbols) {
+    calcPayout : function (data) {
+        var resultSymbols = data.resultSymbols;
         var highestPayout = 0;
         var highestIndex = 0;
 
