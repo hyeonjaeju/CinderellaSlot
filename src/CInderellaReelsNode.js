@@ -12,6 +12,8 @@ CinderellaReelsNode = cc.Node.extend({
     },
 
     _initProperties: function () {
+        this._symbolPoolManager = null;
+
         this._AR = null;
         this._ARTotal = null;
         this.stripData = null;
@@ -32,8 +34,8 @@ CinderellaReelsNode = cc.Node.extend({
         this._spinEndCount = null;
         this._stripIndex = null;
         this._remainingSymbols = null;
-
-        this._symbolPoolManager = null;
+        this._scatterCount = null;
+        this._isLongSpin = null;
 
         this._spinStartEvent = null;
         this._allReelsStoppedEvent = null;
@@ -55,6 +57,8 @@ CinderellaReelsNode = cc.Node.extend({
         this._visibleSymbols = [];
 
         this._spinEndCount = 0;
+        this._scatterCount = 0;
+        this._isLongSpin = false;
 
         this._spinStartEvent = new cc.EventCustom(ReelEvents.SPIN_START);
         this._allReelsStoppedEvent = new cc.EventCustom(ReelEvents.ALL_REELS_STOPPED);
@@ -117,6 +121,9 @@ CinderellaReelsNode = cc.Node.extend({
 
     _spinSymbols: function () {
         this._spinEndCount = 0;
+        this._scatterCount = 0;
+        this._spinSpeed  = GameSettings.SPIN_SPEED;
+        this._isLongSpin = false;
         this._stripIndex = new Array(this._reelCount).fill(0);
         this._remainingSymbols = this._reelCount * (this._reelHeight*2 + 2);
 
@@ -176,6 +183,23 @@ CinderellaReelsNode = cc.Node.extend({
         this.update = function (dt) {
             this._reelUpdate(dt);
         };
+
+        //VisibleSymbols 재생성
+        for(var index = 0 ; index < this._reelHeight; index++) {
+            var stripIndex = (spinResult + index) % stripLength;
+            var symbolIndex = strip[stripIndex] - 1;
+
+            var symbol = this._symbolPoolManager.getSymbol();
+            if (symbol.getIsNew()) {
+                symbol.initSymbol(this._AR, symbolIndex, this._mulSymbolSize, stripIndex);
+            } else {
+                symbol.setSymbol(symbolIndex, stripIndex);
+            }
+
+            symbol.setPosition(cc.p(xPos, spawnPosY + index * this._symbolHeight));
+
+            this._visibleSymbols[reelIndex].push(symbol);
+        }
     },
 
     _calculateTimeToMove : function(symbol, targetY) {
@@ -189,6 +213,17 @@ CinderellaReelsNode = cc.Node.extend({
         var delay = 0;
         for (var reelIndex = 0; reelIndex < this._reelCount; reelIndex++) {
             delay+=delayAdd;
+
+            /*if(symbolIndex === SymbolType.SCATTER - 1) {
+                this._scatterCount++;
+                if(this._scatterCount === 2) { this._isLongSpin = true; }
+            }*/
+
+            //LongSpin 이라면
+            if(this._isLongSpin){
+                //이 때 취소 시키고 길게 돌려야 함.
+
+            }
 
             this._reelStopSchedules[reelIndex] = ((index) => () => {
                 this._spinEndCount++;
@@ -225,8 +260,8 @@ CinderellaReelsNode = cc.Node.extend({
 
         this._visibleSymbols[reelIndex] = [];
 
-
-        //심볼 생성 & 애니메이션
+        // 심볼 생성 & 애니메이션
+        // TODO: _spinSymbols에서 VisibleSymbols 생성하고 그거 기반으로 생성하기 - Scatter 감지를 위해
         for(var index = 0 ; index < this._reelHeight; index++){
             var stripIndex = (spinResult+index) % stripLength;
             var symbolIndex = strip[stripIndex] -1;

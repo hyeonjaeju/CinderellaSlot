@@ -11,10 +11,10 @@ var ReelEvents = {
 };
 
 // 심볼 인덱스 정의
-var SymbolIndex = {
+var SymbolType = {
     NORMAL: 0,
     WILD: 1,
-    SCATTER: 2,
+    SCATTER: 5,
 };
 
 // 설정 값들
@@ -22,7 +22,7 @@ var GameSettings = {
     REEL_COUNT: 5,
     VISIBLE_SYMBOLS: 3,
     SYMBOL_HEIGHT: 105,
-    SPIN_SPEED: 1200,
+    SPIN_SPEED: 1600,
     STOP_DELAY: 0.25,
     STOP_DELAY_FAST: 0.15
 };
