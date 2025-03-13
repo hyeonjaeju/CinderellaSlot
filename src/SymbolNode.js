@@ -13,7 +13,6 @@ SymbolNode = cc.Node.extend({
     _initProperties: function () {
         this._armature = null;
         this.symbolNum = null;
-        this.stripIndex = null;
         this._ARarr = null;
         this.isNew = null;
     },
@@ -39,7 +38,6 @@ SymbolNode = cc.Node.extend({
     setSymbol: function (index, stripIndex) {
         this._invisibleAllAR();
         this.symbolNum = index;
-        this.stripIndex = stripIndex;
         this._armature = this._ARarr[index];
         this._armature.setVisible(true);
     },
@@ -56,10 +54,6 @@ SymbolNode = cc.Node.extend({
 
     getSymbolNum :function (){
         return this.symbolNum;
-    },
-
-    getStripIndex : function (){
-        return this.stripIndex;
     },
 
     getIsNew : function (){

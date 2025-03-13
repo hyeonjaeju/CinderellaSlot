@@ -14,16 +14,9 @@ CinderellaGameNode = cc.Node.extend({
     _initProperties: function () {
         this._state = null;
 
-        this._background = null;
-        this._bottomMenuUI = null;
-        this._btnSpin = null;
-        this._btnAutoSpin = null;
-        this._autoPanel = null;
-        this._autoBtnArray = null;
-        this._btnFast = null;
-        this._fastOnImg = null;
-        this._lbWinReward = null;
-        this._pnlGuideMb = null;
+        this._background= null;
+
+        this._bottomMenuUINode = null;
 
         this._autoCount = null;
         this._autoInfinity = null;
@@ -72,110 +65,8 @@ CinderellaGameNode = cc.Node.extend({
     },
 
     _initBottomMenu: function () {
-        this._bottomMenuUI = ccs.uiReader.widgetFromJsonFile(res.BottomMenuUI);
-        this.addChild(this._bottomMenuUI);
-
-        //스핀 버튼
-        this._btnSpin = this._bottomMenuUI.getChildByName("imgSpinBase").getChildByName("btnSpin");
-
-        this._btnSpin.addTouchEventListener((sender, type) => {
-            switch (type) {
-                case 0:
-                    this._spinBtnLong = false;
-                    this._autoPanel.setVisible(false);
-                    this.scheduleOnce(this._onAutoPanelOpen, 0.75);
-                    return true; // 터치 시작을 받아들임
-                case 2:
-                    if(!this._spinBtnLong){
-                        this.unschedule(this._onAutoPanelOpen);
-                        this._state.onSpin();
-                    }
-                    return true; // 이벤트 처리 완료
-                default:
-                    return false;
-            }
-        }, this);
-
-        //오토 스핀 버튼
-        this._btnAutoSpin = this._bottomMenuUI.getChildByName("imgSpinBase").getChildByName("btnAutoSpin");
-        this._btnAutoSpin.setEnabled(false);
-        this._btnAutoSpin.setVisible(false);
-        this._lbAutoSpin = this._btnAutoSpin.getChildByName("lbAutoSpin");
-
-        this._btnAutoSpin.addTouchEventListener((sender, type) => {
-            switch (type) {
-                case 0:
-                    this._spinBtnLong = true;
-                    this._autoPanel.setVisible(false);
-                    this.scheduleOnce(this._stopAuto, 0.75);
-                    return true; // 터치 시작을 받아들임
-                case 2:
-                    if(this._spinBtnLong){
-                        this.unschedule(this._stopAuto);
-                        this._state.onSpin();
-                    }
-                    return true; // 이벤트 처리 완료
-                default:
-                    return false;
-            }
-        }, this);
-
-        //오토 패널
-        this._autoPanel = this._bottomMenuUI.getChildByName("imgAutoBase");
-        this._autoPanel.setVisible(false);
-        this._autoBtnArray = this._autoPanel.getChildren();
-        this._autoBtnArray.forEach(function (btn, index) {
-            var labelText = null;
-            if(index !== this._autoBtnArray.length - 1)
-                labelText = btn.getChildren()[0].getString();  // 라벨의 텍스트 가져오기
-
-            var count = 0;
-            if(labelText !== null)
-                count = parseInt(labelText);
-
-            var isInfinity = count <= 0;
-
-            btn.addClickEventListener(()=>{
-                this._state.startAuto(count, isInfinity);
-            });
-        }.bind(this))
-
-        //FAST
-        this._btnFast = this._bottomMenuUI.getChildByName("btnFast");
-        this._btnFast.addClickEventListener(this._toggleIsFast.bind(this));
-        this._fastOnImg = this._btnFast.getChildByName("imgFastOn");
-        this._fastOnImg.setVisible(false);
-        //WIN
-        this._lbWinReward = this._bottomMenuUI.getChildByName("lbWinReward");
-        this._lbWinReward.setVisible(false);
-        //WIN_MB
-        this._pnlGuideMb = this._bottomMenuUI.getChildByName("pnlGuide_mb");
-        this._pnlGuideMb.setVisible(false);
-        // BMFont 레이블 생성
-        this._BMlabel = new cc.LabelBMFont(0, res.BMFont);
-        this._BMlabel.setPosition(this._pnlGuideMb.getPosition());
-        this._BMlabel.setVisible(false);
-        this.addChild(this._BMlabel);
-
-        //처음에 가려야 되는 것들
-        this._bottomMenuUI.getChildByName("pnlGuide_pad").setVisible(false);
-
-        /*//노드의 자식 계층구조를 보기위한 함수
-        function printChildren(node, depth = 0) {
-            if (!node) return;
-
-            var prefix = " ".repeat(depth * 2); // 계층 깊이에 따라 들여쓰기 추가
-            cc.log(prefix + "- " + node.getName());
-
-            var children = node.getChildren();
-            children.forEach(function(child) {
-                printChildren(child, depth + 1); // 재귀 호출
-            });
-        }
-
-        // 바텀 메뉴 UI의 전체 구조 출력
-        cc.log("=== 전체 구조 ===");
-        printChildren(this._bottomMenuUI);*/
+        this._bottomMenuUINode = new BottomMenuUINode(this);
+        this.addChild(this._bottomMenuUINode);
     },
 
     _initReels: function () {
@@ -198,28 +89,18 @@ CinderellaGameNode = cc.Node.extend({
         this._setEnableSpin(false);
     },
 
-    _onAutoPanelOpen: function () {
-        this._autoPanel.setVisible(true);
-        this._spinBtnLong = true;
-    },
-
     _startAuto: function (count, isInfinity){
-        if(this._state === GameState.SPINNING) { return; }
-
-        this._autoPanel.setVisible(false);
+        this._bottomMenuUINode.setAutoPanel(false);
         this._autoCount = count;
         this._autoInfinity = isInfinity;
-        this._lbAutoSpin.setString(this._autoCount);
-        this._btnAutoSpin.setEnabled(true);
-        this._btnAutoSpin.setVisible(true);
+        this._bottomMenuUINode.setActiveAutoSpinButton(true);
         this._useAuto();
     },
 
     _stopAuto: function () {
         this._autoCount = 0;
         this._autoInfinity = false;
-        this._btnAutoSpin.setEnabled(false);
-        this._btnAutoSpin.setVisible(false);
+        this._bottomMenuUINode.setActiveAutoSpinButton(false);
     },
 
     _useAuto : function () {
@@ -229,13 +110,12 @@ CinderellaGameNode = cc.Node.extend({
         }
 
         if(this._autoCount <= 0){
-            this._btnAutoSpin.setEnabled(false);
-            this._btnAutoSpin.setVisible(false);
+            this._bottomMenuUINode.setActiveAutoSpinButton(false);
             return;
         }
 
         this._autoCount--;
-        this._lbAutoSpin.setString(this._autoCount);
+        this._bottomMenuUINode.setValueAutoSpinLB(this._autoCount);
         this._state.onSpin();
     },
 
@@ -253,6 +133,7 @@ CinderellaGameNode = cc.Node.extend({
     },
 
     _spin : function (result){
+        this._bottomMenuUINode.setBMLabel(false);
         this._reelsNode.startSpin();
 
         //스핀 종료 딜레이 스케쥴
@@ -271,19 +152,12 @@ CinderellaGameNode = cc.Node.extend({
     },
 
     _setEnableSpin : function (enable) {
-        var getColor = function (){
-            return  enable ? cc.color(255, 255, 255) : cc.color(128, 128, 128);
-        }
-
-        this._btnSpin.setEnabled(enable);
-        this._btnSpin.setColor(getColor());
-        this._btnAutoSpin.setEnabled(enable);
-        this._btnAutoSpin.setColor(getColor());
+        this._bottomMenuUINode.setSpinButton(enable);
+        this._bottomMenuUINode.setAutoSpinButton(enable);
     },
 
     _toggleIsFast : function () {
-        this._isFast = !this._isFast;
-        this._fastOnImg.setVisible(this._isFast);
+        this._bottomMenuUINode.toggleIsFast();
     },
 
     calcPayout : function (data) {
@@ -304,8 +178,6 @@ CinderellaGameNode = cc.Node.extend({
     },
 
     _showPayout : function (highestIndex, highestPayout) {
-        this._BMlabel.setVisible(true);
-
         // 숫자가 점차적으로 늘어나는 애니메이션
         var targetNumber = highestPayout; // 목표 숫자 (변경하려는 최종 숫자)
         var step = 25;
@@ -316,11 +188,10 @@ CinderellaGameNode = cc.Node.extend({
             if (currentNumber < targetNumber) {
                 currentNumber += step;
                 if (currentNumber > targetNumber) currentNumber = targetNumber; // 목표 숫자 초과 방지
-                this._BMlabel.setString(currentNumber.toString()); // 숫자 갱신
+                this._bottomMenuUINode.setBMLabel(true, currentNumber.toString());// 숫자 갱신
             } else {
                 this.unschedule(updateNumber); // 애니메이션 종료
-                this._lbWinReward.setString(targetNumber);
-                this._lbWinReward.setVisible(true);
+                this._bottomMenuUINode.setWinRewardLabel(true, targetNumber);
 
                 this._setState(new IdleState(this));
                 this._useAuto();
