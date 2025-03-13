@@ -35,5 +35,6 @@ var SpinningState = GameState.extend({
 var ResultState = GameState.extend({
     enter: function () {
         cc.log("상태: SHOWING_RESULT");
+        this.gameNode._setEnableSpin(false);
     }
 });

@@ -46,16 +46,15 @@ CinderellaReelsNode = cc.Node.extend({
         this._reelCount = 0;
         this._reelHeight = 3; // 릴의 세로 길이(한번에 보이는 심볼의 수)
         this._reelSymbols = [];
-        this._symbolHeight = 105; // 심볼 간격 포함 높이
-        this._spinSpeed  = 800; // 스크롤 속도 (값이 클수록 빠름)
-        this._mulSymbolSize = 0.95; //슬롯 사이즈랑 안맞을 때 변경
+        this._symbolHeight = GameSettings.SYMBOL_HEIGHT; // 심볼 간격 포함 높이
+        this._spinSpeed  = GameSettings.SPIN_SPEED; // 스크롤 속도 (값이 클수록 빠름)
+        this._mulSymbolSize = 1; //슬롯 사이즈랑 안맞을 때 변경
         this._startPosY = 60;
         this._endPosY = this._startPosY - this._symbolHeight;
         this._reelStopSchedules = [];
         this._visibleSymbols = [];
 
         this._spinEndCount = 0;
-        this._moveToTimeRatio = 55;
 
         this._spinStartEvent = new cc.EventCustom(ReelEvents.SPIN_START);
         this._allReelsStoppedEvent = new cc.EventCustom(ReelEvents.ALL_REELS_STOPPED);
@@ -92,7 +91,7 @@ CinderellaReelsNode = cc.Node.extend({
             var reel = this._reels[reelIndex];
             var xPos = reel.getContentSize().width / 2;
             var layout = reel.layout;
-            var strip = this.stripData[reelIndex];
+            var strip = this._getStrip(reelIndex);
 
             for (var symbolCount = 0; symbolCount < this._reelHeight+2; symbolCount++) {
                 var symbolIndex = strip[symbolCount] - 1; //strip은 1부터 시작 해서 내림
@@ -105,6 +104,10 @@ CinderellaReelsNode = cc.Node.extend({
                 this._reelSymbols[reelIndex].push(symbolNode);
             }
         }
+    },
+
+    _getStrip(reelIndex) {
+        return this.stripData[reelIndex];
     },
 
     startSpin: function () {
@@ -148,7 +151,7 @@ CinderellaReelsNode = cc.Node.extend({
             this._reelSymbols.forEach((symbols, reelIndex) => {
                 if (reelIndex < this._spinEndCount) return;
 
-                var strip = this.stripData[reelIndex];
+                var strip = this._getStrip(reelIndex);
                 var stripLength = strip.length;
                 var stripIndex = this._stripIndex[reelIndex];
 
@@ -189,7 +192,7 @@ CinderellaReelsNode = cc.Node.extend({
 
             this._reelStopSchedules[reelIndex] = ((index) => () => {
                 this._spinEndCount++;
-                this.correctSymbolsPosition(index, this._spinResults);
+                this._correctSymbolsPosition(index, this._spinResults);
             })(reelIndex).bind(this);
 
             this.scheduleOnce(this._reelStopSchedules[reelIndex], delay);
@@ -201,19 +204,19 @@ CinderellaReelsNode = cc.Node.extend({
         for (var reelIndex = 0; reelIndex < this._reelCount; reelIndex++) {
             if(reelIndex >= this._spinEndCount) {
                 this._spinEndCount++;
-                this.correctSymbolsPosition(reelIndex, this._spinResults);
+                this._correctSymbolsPosition(reelIndex, this._spinResults);
                 this.unschedule(this._reelStopSchedules[reelIndex]);
                 this._reelStopSchedules[reelIndex] = null;
             }
         }
     },
 
-    correctSymbolsPosition: function (reelIndex, spinResults) {
+    _correctSymbolsPosition: function (reelIndex, spinResults) {
         var reel = this._reels[reelIndex];
         var layout = reel.layout;
         var xPos = reel.getContentSize().width / 2;
         var spinResult = spinResults[reelIndex];
-        var strip = this.stripData[reelIndex];
+        var strip = this._getStrip(reelIndex);
         var stripLength = strip.length;
         var symbols = this._reelSymbols[reelIndex];
         var highestY = Math.max(...symbols.map(symbol => symbol.getPositionY()));
@@ -241,11 +244,10 @@ CinderellaReelsNode = cc.Node.extend({
             var targetY = this._startPosY + index * this._symbolHeight;
             var timeToMove = this._calculateTimeToMove(symbol, targetY);
 
-            this._checkAllSymbolsStopped(timeToMove);
-
             symbol.runAction(cc.sequence(
                 cc.moveTo(timeToMove, cc.p(xPos, targetY)),
-                cc.jumpBy(0.1,cc.p(0,0), -10, 1)
+                cc.jumpBy(0.1,cc.p(0,0), -10, 1),
+                cc.callFunc(this._checkAllSymbolsStopped.bind(this))
             ));
         }
 
@@ -257,8 +259,6 @@ CinderellaReelsNode = cc.Node.extend({
             var targetY = this._startPosY - index * this._symbolHeight;
             var timeToMove = this._calculateTimeToMove(symbol, targetY);
 
-            this._checkAllSymbolsStopped(timeToMove);
-
             symbol.runAction(cc.sequence(
                 cc.moveTo(timeToMove, cc.p(xPos, targetY)),
                 cc.callFunc(function(symbol, index, stripIndex) {
@@ -269,7 +269,8 @@ CinderellaReelsNode = cc.Node.extend({
                     stripIndex = (stripIndex + 1) % stripLength;
                     this._stripIndex[reelIndex] = stripIndex;
                 }.bind(this, symbol, index, stripIndex)),
-                cc.jumpBy(0.1,cc.p(0,0), -10, 1)
+                cc.jumpBy(0.1,cc.p(0,0), -10, 1),
+                cc.callFunc(this._checkAllSymbolsStopped.bind(this))
             ));
 
             highestIndex++;
@@ -277,11 +278,11 @@ CinderellaReelsNode = cc.Node.extend({
         }
     },
 
-    _checkAllSymbolsStopped: function (timeToMove) {
+    _checkAllSymbolsStopped: function () {
         this._remainingSymbols--;
         if(this._remainingSymbols <= 0) {
             this.unscheduleUpdate();
-            this.scheduleOnce(this._getResultSymbols, timeToMove);
+            this._getResultSymbols();
         }
     },
 

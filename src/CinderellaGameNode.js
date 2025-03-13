@@ -34,7 +34,6 @@ CinderellaGameNode = cc.Node.extend({
         this._payoutsData = null;
         this._payouts = null;
 
-        this._isSpinning = null;
         this._isFast = null;
         this._resultDelay = null;
         this._resultDelayFast = null;
@@ -55,10 +54,9 @@ CinderellaGameNode = cc.Node.extend({
         this._autoCount = 0;
         this._autoInfinity = false;
 
-        //this._isSpinning = false;
         this._isFast = false;
-        this._resultDelay = 0.25;
-        this._resultDelayFast = 0.15;
+        this._resultDelay = GameSettings.STOP_DELAY;
+        this._resultDelayFast = GameSettings.STOP_DELAY_FAST;
     },
 
     _initUI: function () {
@@ -114,6 +112,7 @@ CinderellaGameNode = cc.Node.extend({
                 case 2:
                     if(this._spinBtnLong){
                         this.unschedule(this._stopAuto);
+                        this._state.onSpin();
                     }
                     return true; // 이벤트 처리 완료
                 default:
@@ -267,13 +266,19 @@ CinderellaGameNode = cc.Node.extend({
     },
 
     _spinStop : function () {
-        this._reelsNode.spinStop();
         this._setEnableSpin(false);
+        this._reelsNode.spinStop();
     },
 
     _setEnableSpin : function (enable) {
+        var getColor = function (){
+            return  enable ? cc.color(255, 255, 255) : cc.color(128, 128, 128);
+        }
+
         this._btnSpin.setEnabled(enable);
-        this._btnSpin.setOpacity(enable ? 255 : 128);
+        this._btnSpin.setColor(getColor());
+        this._btnAutoSpin.setEnabled(enable);
+        this._btnAutoSpin.setColor(getColor());
     },
 
     _toggleIsFast : function () {
