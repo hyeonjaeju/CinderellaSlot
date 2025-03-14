@@ -177,9 +177,8 @@ BottomMenuUINode = cc.Node.extend({
         this._autoPanel.setVisible(enable);
     },
 
-    toggleIsFast : function () {
-        this._isFast = !this._isFast;
-        this._fastOnImg.setVisible(this._isFast);
+    setFastButton: function (enable){
+        this._fastOnImg.setVisible(enable);
     },
 
     setBMLabel: function (visible, value) {

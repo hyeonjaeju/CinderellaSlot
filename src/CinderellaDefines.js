@@ -26,7 +26,7 @@ var GameSettings = {
     AR_TOTAL_COUNT: 6,
     SYMBOL_HEIGHT: 105,
     SYMBOL_SIZE: 1,
-    SPIN_SPEED: 1600,
+    SPIN_SPEED: 1200,
     STOP_DELAY: 0.25,
-    STOP_DELAY_FAST: 0.05
+    STOP_DELAY_FAST: 0.1
 };

@@ -167,7 +167,8 @@ CinderellaGameNode = cc.Node.extend({
     },
 
     _toggleIsFast : function () {
-        this._bottomMenuUINode.toggleIsFast();
+        this._isFast = !this._isFast;
+        this._bottomMenuUINode.setFastButton(this._isFast);
     },
 
     calcPayout : function (data) {

@@ -80,10 +80,20 @@ CinderellaReelsNode = cc.Node.extend({
             this._reelSymbols[reelIndex] = [];
         }
 
-        //롱스핀 이펙트 초기화
-        this._longSpinEffect = new cc.LayerColor(cc.color(225, 255, 255, 125));
+        // 롱스핀 이펙트 초기화
+        this._longSpinEffect = new cc.DrawNode();
+
+        // 오른쪽 아래 코너를 올바르게 설정
+        this._longSpinEffect.drawRect(
+            cc.p(0, 0),  // 왼쪽 위 코너
+            cc.p(this._reels[0].width, this._reels[0].height), // 오른쪽 아래 코너
+            cc.color(0, 0, 0, 0), // 테두리 색상
+            5, // 테두리 두께
+            cc.color(175, 255, 255, 255) // 내부는 투명
+        );
+
         this._longSpinEffect.setVisible(false);
-        this.addChild( this._longSpinEffect, 2);
+        this.addChild(this._longSpinEffect, 2);
     },
 
     _initSymbols: function () {
@@ -280,8 +290,6 @@ CinderellaReelsNode = cc.Node.extend({
             return;
         }
 
-        this._longSpinEffect.width = reelNode.width;
-        this._longSpinEffect.height = reelNode.height;
         var worldPos = reelNode.convertToWorldSpaceAR(cc.p(-reelNode.width / 2, -reelNode.height / 2))
         var localPos = this.convertToNodeSpaceAR(worldPos);
         this._longSpinEffect.setPosition(localPos);
@@ -319,7 +327,7 @@ CinderellaReelsNode = cc.Node.extend({
                         }
                     }
                 }.bind(this,reelIndex,index)),
-                cc.jumpBy(0.2,cc.p(0,0), -10, 1).easing(cc.easeOut(2.0)),
+                cc.jumpBy(0.25,cc.p(0,0), -10, 1).easing(cc.easeOut(2.0)),
                 cc.callFunc(this._checkAllSymbolsStopped.bind(this))
             ));
         }
@@ -342,7 +350,7 @@ CinderellaReelsNode = cc.Node.extend({
                     stripIndex = (stripIndex + 1) % stripLength;
                     this._stripIndex[reelIndex] = stripIndex;
                 }.bind(this, symbol, index, stripIndex)),
-                cc.jumpBy(0.2,cc.p(0,0), -10, 1).easing(cc.easeOut(2.0)),
+                cc.jumpBy(0.25,cc.p(0,0), -10, 1).easing(cc.easeOut(2.0)),
                 cc.callFunc(this._checkAllSymbolsStopped.bind(this))
             ));
 
