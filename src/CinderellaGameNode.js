@@ -134,14 +134,14 @@ CinderellaGameNode = cc.Node.extend({
 
     _spin : function (result){
         this._bottomMenuUINode.setBMLabel(false);
-        this._reelsNode.startSpin();
+        this._reelsNode.startSpin(result);
 
         //스핀 종료 딜레이 스케쥴
         var delay = this._resultDelay;
         if(this._isFast) {delay = this._resultDelayFast;}
 
         this.scheduleOnce(function() {
-            this._reelsNode.spinEnd(result, delay);
+            this._reelsNode.spinEnd(delay);
             this._setEnableSpin(true);
         }, 0.3);
     },
