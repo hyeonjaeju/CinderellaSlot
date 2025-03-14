@@ -30,7 +30,6 @@ CinderellaGameNode = cc.Node.extend({
         this._isFast = null;
         this._resultDelay = null;
         this._resultDelayFast = null;
-        this._spinBtnLong = null;
     },
 
     _initValues: function () {
@@ -75,6 +74,8 @@ CinderellaGameNode = cc.Node.extend({
 
         cc.eventManager.addCustomListener(ReelEvents.SPIN_START, this.onReelSpinStart.bind(this));
         cc.eventManager.addCustomListener(ReelEvents.ALL_REELS_STOPPED, this.calcPayout.bind(this));
+        cc.eventManager.addCustomListener(ReelEvents.LONG_SPIN_START, this.onLongSpinStart.bind(this));
+
 
         this.addChild( this._reelsNode );
     },
@@ -86,6 +87,10 @@ CinderellaGameNode = cc.Node.extend({
     },
 
     onReelSpinStart:function (){
+        this._setEnableSpin(false);
+    },
+
+    onLongSpinStart : function (){
         this._setEnableSpin(false);
     },
 
@@ -161,17 +166,29 @@ CinderellaGameNode = cc.Node.extend({
     },
 
     calcPayout : function (data) {
-        var resultSymbols = data.resultSymbols;
+        var visualSymbols = data.visualSymbols;
         var highestPayout = 0;
         var highestIndex = 0;
 
-        for(var index = 0; index < resultSymbols.length; index++) {
-            var payout = resultSymbols[index] * this._payouts[index];
-            if(payout > highestPayout){
-                highestPayout = payout;
-                highestIndex = index;
+        { // NOT HAVE PAYLINE
+            var resultSymbols = new Array(GameSettings.AR_TOTAL_COUNT).fill(0);
+
+            for (var reelIndex = 0; reelIndex < GameSettings.REEL_COUNT; reelIndex++) {
+                for (var index = 0; index < GameSettings.REEL_HEIGHT; index++) {
+                    var resultIndex = visualSymbols[reelIndex][index].getSymbolNum();
+                    resultSymbols[resultIndex]++;
+                }
+            }
+
+            for (var index = 0; index < resultSymbols.length; index++) {
+                var payout = resultSymbols[index] * this._payouts[index];
+                if (payout > highestPayout) {
+                    highestPayout = payout;
+                    highestIndex = index;
+                }
             }
         }
+
 
         this._reelsNode.playSymbolAnimation(highestIndex);
         this._showPayout(highestIndex, highestPayout);

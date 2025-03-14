@@ -15,7 +15,7 @@ CinderellaReelsNode = cc.Node.extend({
         this._symbolPoolManager = null;
 
         this._AR = null;
-        this._ARTotal = null;
+        this._ARTotalCount = null;
         this.stripData = null;
         this._normalReelBack = null;
         this._reels = null;
@@ -26,7 +26,7 @@ CinderellaReelsNode = cc.Node.extend({
         this._spinSpeed = null;
         this._mulSymbolSize = null;
         this._startPosY = null;
-        this._spinResults = null;
+        this._endPosY = null;  // null로 초기화
         this._reelStopSchedules = null;
         this._visualSymbols = null;
 
@@ -36,21 +36,24 @@ CinderellaReelsNode = cc.Node.extend({
         this._scatterCount = null;
         this._firstLongSpinIndex = null;
 
+        // Events
         this._spinStartEvent = null;
         this._allReelsStoppedEvent = null;
+        this._longSpinStartEvent = null;
     },
+
 
     _initValues: function (stripData) {
         this._AR = [];
-        this._ARTotal = 6; // 심볼이 총 몇 개인지
+        this._ARTotalCount = GameSettings.AR_TOTAL_COUNT; // 심볼이 총 몇 개인지
         this.stripData = stripData;
         this._reelCount = 0;
-        this._reelHeight = 3; // 릴의 세로 길이(한번에 보이는 심볼의 수)
+        this._reelHeight = GameSettings.REEL_HEIGHT; // 릴의 세로 길이(한번에 보이는 심볼의 수)
         this._reelSymbols = [];
         this._symbolHeight = GameSettings.SYMBOL_HEIGHT; // 심볼 간격 포함 높이
         this._spinSpeed  = GameSettings.SPIN_SPEED; // 스크롤 속도 (값이 클수록 빠름)
-        this._mulSymbolSize = 1; //슬롯 사이즈랑 안맞을 때 변경
-        this._startPosY = 60;
+        this._mulSymbolSize = GameSettings.SYMBOL_SIZE; //슬롯 사이즈랑 안맞을 때 변경
+        this._startPosY = GameSettings.START_POS_Y;
         this._endPosY = this._startPosY - this._symbolHeight;
         this._reelStopSchedules = [];
         this._visualSymbols = [];
@@ -59,8 +62,10 @@ CinderellaReelsNode = cc.Node.extend({
         this._scatterCount = 0;
         this._firstLongSpinIndex = this._reelCount+1;
 
+        //Events
         this._spinStartEvent = new cc.EventCustom(ReelEvents.SPIN_START);
         this._allReelsStoppedEvent = new cc.EventCustom(ReelEvents.ALL_REELS_STOPPED);
+        this._longSpinStartEvent = new cc.EventCustom(ReelEvents.LONG_SPIN_START);
     },
 
     _initReels: function (normalReelBack) {
@@ -82,7 +87,7 @@ CinderellaReelsNode = cc.Node.extend({
 
     _initSymbols: function () {
         // Armature 리소스 로드
-        for (var i = 0; i < this._ARTotal; i++) {
+        for (var i = 0; i < this._ARTotalCount; i++) {
             ccs.armatureDataManager.addArmatureFileInfo(res["symbolAR0" + (i + 1)]);
             this._AR.push("sl_symbolAR0" + (i + 1));
         }
@@ -239,6 +244,10 @@ CinderellaReelsNode = cc.Node.extend({
             this._reelStopSchedules[reelIndex] = ((reelIndex) => () => {
                 this._spinEndCount++;
                 this._correctSymbolsPosition(reelIndex, this._spinResults);
+
+                if(reelIndex === this._firstLongSpinIndex - 1){
+                    cc.eventManager.dispatchEvent(this._longSpinStartEvent);
+                }
             })(reelIndex).bind(this);
 
             this.scheduleOnce(this._reelStopSchedules[reelIndex], delay);
@@ -327,19 +336,10 @@ CinderellaReelsNode = cc.Node.extend({
     },
 
     _getResultSymbols: function () {
-        var resultSymbols = new Array(this._AR.length).fill(0);
-
-        for (var reelIndex = 0; reelIndex < this._reelCount; reelIndex++) {
-            for(var index= 0 ; index < this._reelHeight; index++){
-                var resultIndex = this._visualSymbols[reelIndex][index].getSymbolNum();
-                resultSymbols[resultIndex]++;
-            }
-        }
-
         this.unschedule(this._reelUpdate);
         this._spinResults = null;
 
-        this._allReelsStoppedEvent.resultSymbols = resultSymbols;
+        this._allReelsStoppedEvent.visualSymbols = this._visualSymbols;
         cc.eventManager.dispatchEvent(this._allReelsStoppedEvent);
     },
 

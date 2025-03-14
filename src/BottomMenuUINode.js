@@ -31,6 +31,7 @@ BottomMenuUINode = cc.Node.extend({
 
     _initValues: function () {
         this._spinBtnLong = false;
+        this._autoStopSchedule = function () {};
     },
 
     _initUI: function () {
@@ -86,6 +87,7 @@ BottomMenuUINode = cc.Node.extend({
             switch (type) {
                 case 0:
                     this._autoSpinBtnLong = false;
+                    this.unschedule(this._autoStopSchedule);
                     this._autoStopSchedule = ()=>{
                         this._autoSpinBtnLong = true;
                         this._gameNode._stopAuto();

@@ -14,13 +14,13 @@
     "jsList" : [
         "src/resource.js",
         "src/app.js",
-        "src/CinderellaGameNode.js",
         "src/CinderellaDefines.js",
+        "src/CinderellaGameNode.js",
+        "src/BottomMenuUINode.js",
         "src/CinderellaReelsNode.js",
         "src/SymbolNode.js",
         "src/SymbolPoolManager.js",
         "src/EventEmitter.js",
-        "src/GameState.js",
-        "src/BottomMenuUINode.js"
+        "src/GameState.js"
     ]
 }
