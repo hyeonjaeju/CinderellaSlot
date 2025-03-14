@@ -14,7 +14,6 @@ var IdleState = GameState.extend({
         this.gameNode._setEnableSpin(true);
     },
     onSpin: function () {
-        this.gameNode._setState(new SpinningState(this.gameNode));
         this.gameNode._onSpin();
     },
     startAuto:function (count, isInfinity) {

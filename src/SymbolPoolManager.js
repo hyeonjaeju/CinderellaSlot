@@ -1,6 +1,5 @@
-var SymbolPoolManager = cc.Node.extend({
+var SymbolPoolManager = cc.Class.extend({
     ctor:function (symbolPrefab) {
-        this._super();
         this.pool = [];
         this.symbolPrefab = symbolPrefab;
     },

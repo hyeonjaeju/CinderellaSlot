@@ -8,11 +8,15 @@ CinderellaGameNode = cc.Node.extend({
         this._initProperties();
         this._initValues();
         this._initUI();
-        this._setState(new IdleState(this));
+        this._setState(this._idleState);
     },
 
     _initProperties: function () {
         this._state = null;
+        this._idleState = new IdleState(this);
+        this._spinningState = new SpinningState(this);
+        this._resultState = new ResultState(this);
+
 
         this._background= null;
 
@@ -139,6 +143,7 @@ CinderellaGameNode = cc.Node.extend({
 
     _spin : function (result){
         this._bottomMenuUINode.setBMLabel(false);
+        this._setState(this._spinningState);
         this._reelsNode.startSpin(result);
 
         //스핀 종료 딜레이 스케쥴
@@ -198,7 +203,7 @@ CinderellaGameNode = cc.Node.extend({
         // 숫자가 점차적으로 늘어나는 애니메이션
         var targetNumber = highestPayout; // 목표 숫자 (변경하려는 최종 숫자)
         var step = 25;
-        this._setState(new ResultState(this));
+        this._setState(this._resultState);
 
         var currentNumber = 0;
         var updateNumber = function () {
@@ -210,7 +215,7 @@ CinderellaGameNode = cc.Node.extend({
                 this.unschedule(updateNumber); // 애니메이션 종료
                 this._bottomMenuUINode.setWinRewardLabel(true, targetNumber);
 
-                this._setState(new IdleState(this));
+                this._setState(this._idleState);
                 this._useAuto();
             }
         }.bind(this);

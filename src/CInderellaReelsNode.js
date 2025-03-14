@@ -9,6 +9,9 @@ CinderellaReelsNode = cc.Node.extend({
         this._initValues(stripData);
         this._initReels(normalReelBack);
         this._initSymbols();
+
+        // 이벤트 핸들러 인스턴스 생성
+        this._eventHandler = new ReelEventHandler();
     },
 
     _initProperties: function () {
@@ -26,21 +29,17 @@ CinderellaReelsNode = cc.Node.extend({
         this._spinSpeed = null;
         this._mulSymbolSize = null;
         this._startPosY = null;
-        this._endPosY = null;  // null로 초기화
+        this._endPosY = null;
         this._reelStopSchedules = null;
         this._visualSymbols = null;
 
         this._spinEndCount = null;
+        this._isReelStop = null;
         this._stripIndex = null;
         this._remainingSymbols = null;
         this._scatterCount = null;
         this._firstLongSpinIndex = null;
         this._longSpinEffect = null;
-
-        // Events
-        this._spinStartEvent = null;
-        this._allReelsStoppedEvent = null;
-        this._longSpinStartEvent = null;
     },
 
 
@@ -60,13 +59,9 @@ CinderellaReelsNode = cc.Node.extend({
         this._visualSymbols = [];
 
         this._spinEndCount = 0;
+        this._isReelStop = false;
         this._scatterCount = 0;
         this._firstLongSpinIndex = this._reelCount+1;
-
-        //Events
-        this._spinStartEvent = new cc.EventCustom(ReelEvents.SPIN_START);
-        this._allReelsStoppedEvent = new cc.EventCustom(ReelEvents.ALL_REELS_STOPPED);
-        this._longSpinStartEvent = new cc.EventCustom(ReelEvents.LONG_SPIN_START);
     },
 
     _initReels: function (normalReelBack) {
@@ -98,9 +93,10 @@ CinderellaReelsNode = cc.Node.extend({
             this._AR.push("sl_symbolAR0" + (i + 1));
         }
 
-        //심볼 풀링매니저 생성
+        // 심볼 풀링매니저 생성
         this._symbolPoolManager = new SymbolPoolManager(SymbolNode);
 
+        // 스핀할 심볼들 생성
         for (var reelIndex = 0; reelIndex < this._reelCount; reelIndex++) {
             var reel = this._reels[reelIndex];
             var xPos = reel.getContentSize().width / 2;
@@ -125,12 +121,13 @@ CinderellaReelsNode = cc.Node.extend({
     },
 
     startSpin: function (result) {
-        cc.eventManager.dispatchEvent(this._spinStartEvent);
+        this._eventHandler.dispatchSpinStartEvent();
         this._spinSymbols(result);
     },
 
     _spinSymbols: function (result) {
         this._spinEndCount = 0;
+        this._isReelStop = false;
         this._stripIndex = new Array(this._reelCount).fill(0);
         this._remainingSymbols = this._reelCount * (this._reelHeight*2 + 2);
         this._spinResults = result;
@@ -248,12 +245,13 @@ CinderellaReelsNode = cc.Node.extend({
 
             //릴 정지 스케쥴
             this._reelStopSchedules[reelIndex] = ((reelIndex) => () => {
-                this._spinEndCount++;
-                this._correctSymbolsPosition(reelIndex, this._spinResults);
 
                 if(reelIndex === this._firstLongSpinIndex - 1){
-                    cc.eventManager.dispatchEvent(this._longSpinStartEvent);
+                    this._eventHandler.dispatchLongSpinStartEvent();
                 }
+
+                this._spinEndCount++;
+                this._correctSymbolsPosition(reelIndex, this._spinResults);
             })(reelIndex).bind(this);
 
             this.scheduleOnce(this._reelStopSchedules[reelIndex], delay);
@@ -262,6 +260,8 @@ CinderellaReelsNode = cc.Node.extend({
 
     // 중간에 STOP해서 멈출 때
     spinStop: function () {
+        this._isReelStop = true;
+
         for (var reelIndex = 0; reelIndex < this._reelCount; reelIndex++) {
             if(reelIndex >= this._spinEndCount) {
                 this._spinEndCount++;
@@ -272,9 +272,9 @@ CinderellaReelsNode = cc.Node.extend({
         }
     },
 
-    _addLongSpinEffect: function(reelIndex) {
+    _setLongSpinEffect: function(reelIndex) {
         var reelNode = this._reels[reelIndex + 1]; // 해당 릴 노드를 가져옴
-        if (!reelNode) {
+        if (!reelNode || this._isReelStop) {
             if(this._longSpinEffect)
                 this._longSpinEffect.setVisible(false);
             return;
@@ -282,13 +282,8 @@ CinderellaReelsNode = cc.Node.extend({
 
         this._longSpinEffect.width = reelNode.width;
         this._longSpinEffect.height = reelNode.height;
-        // ⚡ 기존 부모에서의 월드 좌표 구하기
-        var worldPos = reelNode.convertToWorldSpaceAR(cc.p(-reelNode.width / 2, -reelNode.height / 2));
-
-        // ⚡ 새로운 부모 기준 로컬 좌표 변환 (부모가 다르면 필수)
+        var worldPos = reelNode.convertToWorldSpaceAR(cc.p(-reelNode.width / 2, -reelNode.height / 2))
         var localPos = this.convertToNodeSpaceAR(worldPos);
-
-        // 🎯 변환된 위치 적용
         this._longSpinEffect.setPosition(localPos);
         this._longSpinEffect.setVisible(true);
     },
@@ -317,14 +312,14 @@ CinderellaReelsNode = cc.Node.extend({
 
             symbol.runAction(cc.sequence(
                 cc.moveTo(timeToMove, cc.p(xPos, targetY)),
-                cc.jumpBy(0.1,cc.p(0,0), -10, 1),
                 cc.callFunc(function (reelIndex,index){
                     if(index + 1 >= this._reelHeight){
                         if(this._firstLongSpinIndex - 1 <= reelIndex && reelIndex < this._reelCount){
-                            this._addLongSpinEffect(reelIndex);
+                            this._setLongSpinEffect(reelIndex);
                         }
                     }
                 }.bind(this,reelIndex,index)),
+                cc.jumpBy(0.2,cc.p(0,0), -10, 1).easing(cc.easeOut(2.0)),
                 cc.callFunc(this._checkAllSymbolsStopped.bind(this))
             ));
         }
@@ -347,7 +342,7 @@ CinderellaReelsNode = cc.Node.extend({
                     stripIndex = (stripIndex + 1) % stripLength;
                     this._stripIndex[reelIndex] = stripIndex;
                 }.bind(this, symbol, index, stripIndex)),
-                cc.jumpBy(0.1,cc.p(0,0), -10, 1),
+                cc.jumpBy(0.2,cc.p(0,0), -10, 1).easing(cc.easeOut(2.0)),
                 cc.callFunc(this._checkAllSymbolsStopped.bind(this))
             ));
 
@@ -373,8 +368,7 @@ CinderellaReelsNode = cc.Node.extend({
         this.unschedule(this._reelUpdate);
         this._spinResults = null;
 
-        this._allReelsStoppedEvent.visualSymbols = this._visualSymbols;
-        cc.eventManager.dispatchEvent(this._allReelsStoppedEvent);
+        this._eventHandler.dispatchAllReelsStoppedEvent(this._visualSymbols);
     },
 
     playSymbolAnimation : function (targetSymbolNum) {
