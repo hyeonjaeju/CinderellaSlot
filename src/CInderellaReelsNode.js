@@ -35,6 +35,7 @@ CinderellaReelsNode = cc.Node.extend({
         this._remainingSymbols = null;
         this._scatterCount = null;
         this._firstLongSpinIndex = null;
+        this._longSpinEffect = null;
 
         // Events
         this._spinStartEvent = null;
@@ -83,6 +84,11 @@ CinderellaReelsNode = cc.Node.extend({
 
             this._reelSymbols[reelIndex] = [];
         }
+
+        //롱스핀 이펙트 초기화
+        this._longSpinEffect = new cc.LayerColor(cc.color(225, 255, 255, 125));
+        this._longSpinEffect.setVisible(false);
+        this.addChild( this._longSpinEffect, 2);
     },
 
     _initSymbols: function () {
@@ -266,6 +272,27 @@ CinderellaReelsNode = cc.Node.extend({
         }
     },
 
+    _addLongSpinEffect: function(reelIndex) {
+        var reelNode = this._reels[reelIndex + 1]; // 해당 릴 노드를 가져옴
+        if (!reelNode) {
+            if(this._longSpinEffect)
+                this._longSpinEffect.setVisible(false);
+            return;
+        }
+
+        this._longSpinEffect.width = reelNode.width;
+        this._longSpinEffect.height = reelNode.height;
+        // ⚡ 기존 부모에서의 월드 좌표 구하기
+        var worldPos = reelNode.convertToWorldSpaceAR(cc.p(-reelNode.width / 2, -reelNode.height / 2));
+
+        // ⚡ 새로운 부모 기준 로컬 좌표 변환 (부모가 다르면 필수)
+        var localPos = this.convertToNodeSpaceAR(worldPos);
+
+        // 🎯 변환된 위치 적용
+        this._longSpinEffect.setPosition(localPos);
+        this._longSpinEffect.setVisible(true);
+    },
+
     _correctSymbolsPosition: function (reelIndex, spinResults) {
         var reel = this._reels[reelIndex];
         var layout = reel.layout;
@@ -291,6 +318,13 @@ CinderellaReelsNode = cc.Node.extend({
             symbol.runAction(cc.sequence(
                 cc.moveTo(timeToMove, cc.p(xPos, targetY)),
                 cc.jumpBy(0.1,cc.p(0,0), -10, 1),
+                cc.callFunc(function (reelIndex,index){
+                    if(index + 1 >= this._reelHeight){
+                        if(this._firstLongSpinIndex - 1 <= reelIndex && reelIndex < this._reelCount){
+                            this._addLongSpinEffect(reelIndex);
+                        }
+                    }
+                }.bind(this,reelIndex,index)),
                 cc.callFunc(this._checkAllSymbolsStopped.bind(this))
             ));
         }
