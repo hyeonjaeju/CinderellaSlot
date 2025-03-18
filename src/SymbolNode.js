@@ -22,7 +22,7 @@ SymbolNode = cc.Node.extend({
         this.isNew = true;
     },
 
-    initSymbol: function (AR, index, mulSymbolSize, stripIndex) {
+    initSymbol: function (AR, index, mulSymbolSize) {
         this.setScale(this.getScale() * mulSymbolSize);
         for (var i = 0; i < AR.length; i++) {
             this._ARarr[i] = new ccs.Armature(AR[i]);
@@ -31,11 +31,11 @@ SymbolNode = cc.Node.extend({
             this.addChild(this._ARarr[i]);
         }
 
-        this.setSymbol(index, stripIndex);
+        this.setSymbol(index);
         this.isNew = false;
     },
 
-    setSymbol: function (index, stripIndex) {
+    setSymbol: function (index) {
         this._invisibleAllAR();
         this.symbolNum = index;
         this._armature = this._ARarr[index];

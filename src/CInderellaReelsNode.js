@@ -31,7 +31,7 @@ CinderellaReelsNode = cc.Node.extend({
         this._startPosY = null;
         this._endPosY = null;
         this._reelStopSchedules = null;
-        this._visualSymbols = null;
+        this._resultSymbols = null;
 
         this._spinEndCount = null;
         this._isReelStop = null;
@@ -56,7 +56,7 @@ CinderellaReelsNode = cc.Node.extend({
         this._startPosY = GameSettings.START_POS_Y;
         this._endPosY = this._startPosY - this._symbolHeight;
         this._reelStopSchedules = [];
-        this._visualSymbols = [];
+        this._resultSymbols = [];
 
         this._spinEndCount = 0;
         this._isReelStop = false;
@@ -143,11 +143,11 @@ CinderellaReelsNode = cc.Node.extend({
         this._spinResults = result;
         this._firstLongSpinIndex = this._reelCount+1;
 
-        //전 VisualSymbols(결과 심볼 노드) 내리기
-        this._beforeVisualSymbolsAnimation();
+        //전 resultSymbols(결과 심볼 노드) 내리기
+        this._beforeresultSymbolsAnimation();
 
-        //VisualSymbols 재생성
-        this._createVisualSymbols();
+        //resultSymbols 재생성
+        this._createresultSymbols();
 
         //릴 회전
         this.update = (dt) => {
@@ -184,10 +184,10 @@ CinderellaReelsNode = cc.Node.extend({
         });
     },
 
-    _beforeVisualSymbolsAnimation: function () {
-        if (this._visualSymbols.length > 0) {
+    _beforeresultSymbolsAnimation: function () {
+        if (this._resultSymbols.length > 0) {
             for (var reelIndex = 0; reelIndex < this._reelCount; reelIndex++) {
-                var symbols = this._visualSymbols[reelIndex];
+                var symbols = this._resultSymbols[reelIndex];
                 var reel = this._reels[reelIndex];
                 var xPos = reel.getContentSize().width / 2;
 
@@ -204,20 +204,20 @@ CinderellaReelsNode = cc.Node.extend({
                     ));
                 }
             }
-            this._visualSymbols = [];
+            this._resultSymbols = [];
         }
     },
 
-    _createVisualSymbols : function () {
+    _createresultSymbols : function () {
         this._scatterCount = 0;
 
-        //VisualSymbols 초기화 & 생성
+        //resultSymbols 초기화 & 생성
         for(var reelIndex = 0; reelIndex < this._reelCount; reelIndex++) {
             var spinResult = this._spinResults[reelIndex];
             var strip = this._getStrip(reelIndex);
             var stripLength = strip.length;
 
-            this._visualSymbols[reelIndex] = [];
+            this._resultSymbols[reelIndex] = [];
 
             for(var index = 0 ; index < this._reelHeight; index++) {
                 var stripIndex = (spinResult + index) % stripLength;
@@ -237,7 +237,7 @@ CinderellaReelsNode = cc.Node.extend({
                     }
                 }
 
-                this._visualSymbols[reelIndex].push(symbol);
+                this._resultSymbols[reelIndex].push(symbol);
             }
         }
     },
@@ -310,7 +310,7 @@ CinderellaReelsNode = cc.Node.extend({
 
         // 심볼 AddChild & 애니메이션
         for(var index = 0 ; index < this._reelHeight; index++){
-            var symbol = this._visualSymbols[reelIndex][index];
+            var symbol = this._resultSymbols[reelIndex][index];
             symbol.setPosition(cc.p(xPos, spawnPosY + index * this._symbolHeight));
             layout.addChild(symbol);
 
@@ -376,11 +376,11 @@ CinderellaReelsNode = cc.Node.extend({
         this.unschedule(this._reelUpdate);
         this._spinResults = null;
 
-        this._eventHandler.dispatchAllReelsStoppedEvent(this._visualSymbols);
+        this._eventHandler.dispatchAllReelsStoppedEvent(this._resultSymbols);
     },
 
     playSymbolAnimation : function (targetSymbolNum) {
-        this._visualSymbols?.forEach((symbols) => {
+        this._resultSymbols?.forEach((symbols) => {
             symbols.forEach((symbol) => {
                 if(symbol.getSymbolNum() === targetSymbolNum){
                     symbol.setAnimation("play");
@@ -390,7 +390,7 @@ CinderellaReelsNode = cc.Node.extend({
     },
 
     stopSymbolAnimation : function () {
-        this._visualSymbols?.forEach((symbols) => {
+        this._resultSymbols?.forEach((symbols) => {
             symbols.forEach((symbol) => {
                 symbol.setAnimation("normal");
             })

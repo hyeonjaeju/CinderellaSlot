@@ -9,8 +9,8 @@ var ReelEventHandler = cc.Class.extend({
         cc.eventManager.dispatchEvent(this._spinStartEvent);
     },
 
-    dispatchAllReelsStoppedEvent: function (visualSymbols) {
-        this._allReelsStoppedEvent.visualSymbols = visualSymbols;
+    dispatchAllReelsStoppedEvent: function (resultSymbols) {
+        this._allReelsStoppedEvent.resultSymbols = resultSymbols;
         cc.eventManager.dispatchEvent(this._allReelsStoppedEvent);
     },
 

@@ -172,22 +172,22 @@ CinderellaGameNode = cc.Node.extend({
     },
 
     calcPayout : function (data) {
-        var visualSymbols = data.visualSymbols;
+        var resultSymbols = data.resultSymbols;
         var highestPayout = 0;
         var highestIndex = 0;
 
         { // NOT HAVE PAYLINE
-            var resultSymbols = new Array(GameSettings.AR_TOTAL_COUNT).fill(0);
+            var result = new Array(GameSettings.AR_TOTAL_COUNT).fill(0);
 
             for (var reelIndex = 0; reelIndex < GameSettings.REEL_COUNT; reelIndex++) {
                 for (var index = 0; index < GameSettings.REEL_HEIGHT; index++) {
-                    var resultIndex = visualSymbols[reelIndex][index].getSymbolNum();
-                    resultSymbols[resultIndex]++;
+                    var resultIndex = resultSymbols[reelIndex][index].getSymbolNum();
+                    result[resultIndex]++;
                 }
             }
 
-            for (var index = 0; index < resultSymbols.length; index++) {
-                var payout = resultSymbols[index] * this._payouts[index];
+            for (var index = 0; index < result.length; index++) {
+                var payout = result[index] * this._payouts[index];
                 if (payout > highestPayout) {
                     highestPayout = payout;
                     highestIndex = index;
