@@ -19,18 +19,18 @@ CinderellaGameNode = cc.Node.extend({
 
 
         this._background= null;
-
         this._bottomMenuUINode = null;
-
-        this._autoCount = null;
-        this._autoInfinity = null;
-
         this._reelsNode = null;
+
+        //data
         this._data = null;
         this._stripData = null;
         this._payoutsData = null;
         this._payouts = null;
+        this._payLinesData = null;
 
+        this._autoCount = null;
+        this._autoInfinity = null
         this._isFast = null;
         this._resultDelay = null;
         this._resultDelayFast = null;
@@ -43,6 +43,7 @@ CinderellaGameNode = cc.Node.extend({
             this._stripData = this._data.strip; // strip 배열 가져오기
             this._payoutsData = this._data.payout;
             this._payouts = Object.values(this._payoutsData);
+            this._payLinesData = this._data.payLines;
         } else {
             cc.log("JSON 데이터를 찾을 수 없습니다.");
         }
@@ -176,7 +177,7 @@ CinderellaGameNode = cc.Node.extend({
         var highestPayout = 0;
         var highestIndex = 0;
 
-        { // NOT HAVE PAYLINE
+        { // HAVE NOT PAYLINE
             var result = new Array(GameSettings.AR_TOTAL_COUNT).fill(0);
 
             for (var reelIndex = 0; reelIndex < GameSettings.REEL_COUNT; reelIndex++) {
@@ -193,11 +194,32 @@ CinderellaGameNode = cc.Node.extend({
                     highestIndex = index;
                 }
             }
+
+            this._reelsNode.playSymbolAnimation(highestIndex);
+            this._showPayout(highestIndex, highestPayout);
         }
 
+        { // HAVE PAYLINE
+            var resultSymbols = this.convertReelsToRows(data.resultSymbols);
 
-        this._reelsNode.playSymbolAnimation(highestIndex);
-        this._showPayout(highestIndex, highestPayout);
+
+        }
+    },
+
+    convertReelsToRows: function(reels) {
+        var rows = [];
+        if (reels.length === 0) return rows;
+
+        var rowCount = reels[0].length; // 릴 하나의 심볼 개수 (세로줄 길이 기준)
+
+        for (var row = 0; row < rowCount; row++) {
+            var rowData = [];
+            for (var reel = 0; reel < reels.length; reel++) {
+                rowData.push(reels[reel][row]);
+            }
+            rows.push(rowData);
+        }
+        return rows;
     },
 
     _showPayout : function (highestIndex, highestPayout) {
@@ -223,4 +245,5 @@ CinderellaGameNode = cc.Node.extend({
 
         this.schedule(updateNumber, 1 / 60); // 1/60초마다 updateNumber 호출
     }
+    
 })
