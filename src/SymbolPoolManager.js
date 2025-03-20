@@ -5,8 +5,6 @@ var SymbolPoolManager = cc.Class.extend({
     },
 
     getSymbol: function() {
-        var foundSymbol = null;
-
         // 풀을 순회하여 비활성화된 객체를 찾는다.
         this.pool.forEach(function(symbol) {
             if (!symbol.active) {

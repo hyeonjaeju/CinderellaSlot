@@ -187,7 +187,7 @@ BottomMenuUINode = cc.Node.extend({
     },
 
     setWinRewardLabel: function (visible, value) {
-        this._lbWinReward.setVisible(true);
+        this._lbWinReward.setVisible(visible);
         if(value) { this._lbWinReward.setString(value); }
     }
 })

@@ -28,6 +28,7 @@ CinderellaGameNode = cc.Node.extend({
         this._payoutsData = null;
         this._payouts = null;
         this._payLinesData = null;
+        this._payLines = null;
 
         this._autoCount = null;
         this._autoInfinity = null
@@ -44,6 +45,8 @@ CinderellaGameNode = cc.Node.extend({
             this._payoutsData = this._data.payout;
             this._payouts = Object.values(this._payoutsData);
             this._payLinesData = this._data.payLines;
+            this._payLines = [];
+            this._hexToPayLine();
         } else {
             cc.log("JSON 데이터를 찾을 수 없습니다.");
         }
@@ -54,6 +57,14 @@ CinderellaGameNode = cc.Node.extend({
         this._isFast = false;
         this._resultDelay = GameSettings.STOP_DELAY;
         this._resultDelayFast = GameSettings.STOP_DELAY_FAST;
+    },
+
+    _hexToPayLine: function() {
+        // '0x'를 제거하고, 나머지 부분을 배열로 변환
+        this._payLinesData.forEach((payLine) => {
+            var hex = payLine.slice(2);
+            this._payLines.push(hex.split('').map(x => parseInt(x, 16)));
+        })
     },
 
     _initUI: function () {
@@ -173,11 +184,12 @@ CinderellaGameNode = cc.Node.extend({
     },
 
     calcPayout : function (data) {
-        var resultSymbols = data.resultSymbols;
-        var highestPayout = 0;
-        var highestIndex = 0;
 
-        { // HAVE NOT PAYLINE
+        /*{ // HAVE NOT PAYLINE
+            var resultSymbols = data.resultSymbols;
+            var highestPayout = 0;
+            var highestIndex = 0;
+
             var result = new Array(GameSettings.AR_TOTAL_COUNT).fill(0);
 
             for (var reelIndex = 0; reelIndex < GameSettings.REEL_COUNT; reelIndex++) {
@@ -195,18 +207,28 @@ CinderellaGameNode = cc.Node.extend({
                 }
             }
 
-            this._reelsNode.playSymbolAnimation(highestIndex);
+            //this._reelsNode.playSymbolAnimation(highestIndex);
             this._showPayout(highestIndex, highestPayout);
-        }
+        }*/
 
-        { // HAVE PAYLINE
-            var resultSymbols = this.convertReelsToRows(data.resultSymbols);
+        // HAVE PAYLINE
+        var resultSymbols = this._convertReelsToRows(data.resultSymbols);
+        var resultSymbolNums = resultSymbols.map(row => row.map(symbol => symbol.getSymbolNum()));
 
 
-        }
+        var winResult = this._checkWin(resultSymbols, resultSymbolNums, this._payLines);
+        var winSymbols = winResult.winningSymbols;
+        if(winSymbols.length > 0){ this._reelsNode.playSymbolAnimation(winSymbols); }
+        var totalPay = 0;
+        winResult.wins.forEach(win => {
+            var winSymbol = win.symbol;
+            var symbolCount = win.count;
+            totalPay += this._payouts[winSymbol] * symbolCount;
+        })
+        this._showPayout(totalPay);
     },
 
-    convertReelsToRows: function(reels) {
+    _convertReelsToRows: function(reels) {
         var rows = [];
         if (reels.length === 0) return rows;
 
@@ -222,9 +244,48 @@ CinderellaGameNode = cc.Node.extend({
         return rows;
     },
 
-    _showPayout : function (highestIndex, highestPayout) {
+    _checkWin: function (resultSymbols, resultSymbolNums, payLines, minMatch = 3) {
+        var wins = [];
+        var winningSymbolSets = new Set(); // 당첨된 심볼들을 담을 배열
+
+        // payLines 배열의 각 라인에 대해 확인
+        for (var i = 0; i < payLines.length; i++) {
+            var payLine = payLines[i];
+            var firstSymbol = resultSymbolNums[payLine[0]][0]; // 첫 번째 릴의 첫 번째 심볼
+            var matchCount = 1; // 연속 심볼의 개수
+            var isWinning = false; // 당첨 여부
+            var matchSymbols = [];
+            matchSymbols.push(resultSymbols[payLine[0]][0]); // 첫 번째 릴의 첫 번째 심볼
+
+            // payLine에서 각 릴의 해당 행에 대해 비교
+            for (var reelIndex = 1; reelIndex < payLine.length; reelIndex++) {
+                var row = payLine[reelIndex]; // 현재 릴에서 확인할 행
+                if (resultSymbolNums[row][reelIndex] === firstSymbol) {
+                    matchCount++;
+                    matchSymbols.push(resultSymbols[row][reelIndex]);
+                    if (matchCount >= minMatch) {
+                        isWinning = true;
+                    }
+                } else {
+                    break;
+                }
+            }
+
+            // 당첨된 라인이라면 wins와 winningSymbols에 추가
+            if (isWinning) {
+                wins.push({ line: i, symbol: firstSymbol, count: matchCount });
+                matchSymbols.forEach(symbol => {
+                    winningSymbolSets.add(symbol);
+                })
+            }
+        }
+
+        return { wins, winningSymbols : Array.from(winningSymbolSets) };
+    },
+
+    _showPayout : function (payout) {
         // 숫자가 점차적으로 늘어나는 애니메이션
-        var targetNumber = highestPayout; // 목표 숫자 (변경하려는 최종 숫자)
+        var targetNumber = payout; // 목표 숫자 (변경하려는 최종 숫자)
         var step = 25;
         this._setState(this._resultState);
 
@@ -236,7 +297,7 @@ CinderellaGameNode = cc.Node.extend({
                 this._bottomMenuUINode.setBMLabel(true, currentNumber.toString());// 숫자 갱신
             } else {
                 this.unschedule(updateNumber); // 애니메이션 종료
-                this._bottomMenuUINode.setWinRewardLabel(true, targetNumber);
+                this._bottomMenuUINode.setWinRewardLabel(targetNumber > 0, targetNumber);
 
                 this._setState(this._idleState);
                 this._useAuto();
@@ -245,5 +306,5 @@ CinderellaGameNode = cc.Node.extend({
 
         this.schedule(updateNumber, 1 / 60); // 1/60초마다 updateNumber 호출
     }
-    
+
 })

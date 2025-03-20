@@ -82,14 +82,12 @@ CinderellaReelsNode = cc.Node.extend({
 
         // 롱스핀 이펙트 초기화
         this._longSpinEffect = new cc.DrawNode();
-
-        // 오른쪽 아래 코너를 올바르게 설정
         this._longSpinEffect.drawRect(
-            cc.p(0, 0),  // 왼쪽 위 코너
-            cc.p(this._reels[0].width, this._reels[0].height), // 오른쪽 아래 코너
-            cc.color(0, 0, 0, 0), // 테두리 색상
+            cc.p(0, 0),
+            cc.p(this._reels[0].width, this._reels[0].height),
+            cc.color(0, 0, 0, 0),
             5, // 테두리 두께
-            cc.color(175, 255, 255, 255) // 내부는 투명
+            cc.color(175, 255, 255, 255)
         );
 
         this._longSpinEffect.setVisible(false);
@@ -116,7 +114,7 @@ CinderellaReelsNode = cc.Node.extend({
             for (var symbolCount = 0; symbolCount < this._reelHeight+2; symbolCount++) {
                 var symbolIndex = strip[symbolCount] - 1; //strip은 1부터 시작 해서 내림
                 var symbolNode = this._symbolPoolManager.getSymbol();
-                symbolNode.initSymbol(this._AR, symbolIndex, this._mulSymbolSize, symbolCount);
+                symbolNode.initSymbol(this._AR, symbolIndex, this._mulSymbolSize);
 
                 symbolNode.setPosition(xPos, this._startPosY + symbolCount * this._symbolHeight);
 
@@ -158,18 +156,19 @@ CinderellaReelsNode = cc.Node.extend({
     },
 
     _reelUpdate: function (dt) {
-        // dt를 사용하여 프레임 독립적인 이동 거리 계산
         var frameIndependentSpeed = this._spinSpeed * dt;
 
-        this._reelSymbols.forEach((symbols, reelIndex) => {
-            if (reelIndex < this._spinEndCount) return;
+        for (var reelIndex = 0; reelIndex < this._reelSymbols.length; reelIndex++) {
+            if (reelIndex < this._spinEndCount) continue; // 중간 건너뛰기
 
+            var symbols = this._reelSymbols[reelIndex];
             var strip = this._getStrip(reelIndex);
             var stripLength = strip.length;
             var stripIndex = this._stripIndex[reelIndex];
 
-            symbols.forEach(symbol => {
-                // dt를 이용한 이동 거리 계산으로 프레임 독립적인 움직임 구현
+            for (var symbolIndex = 0; symbolIndex < symbols.length; symbolIndex++) {
+                var symbol = symbols[symbolIndex];
+
                 symbol.setPositionY(symbol.getPositionY() - frameIndependentSpeed);
 
                 if (symbol.getPositionY() <= this._endPosY) {
@@ -180,8 +179,8 @@ CinderellaReelsNode = cc.Node.extend({
                     stripIndex = (stripIndex + 1) % stripLength;
                     this._stripIndex[reelIndex] = stripIndex;
                 }
-            });
-        });
+            }
+        }
     },
 
     _beforeresultSymbolsAnimation: function () {
@@ -225,7 +224,7 @@ CinderellaReelsNode = cc.Node.extend({
 
                 var symbol = this._symbolPoolManager.getSymbol();
                 if (symbol.getIsNew()) {
-                    symbol.initSymbol(this._AR, symbolIndex, this._mulSymbolSize, stripIndex);
+                    symbol.initSymbol(this._AR, symbolIndex, this._mulSymbolSize);
                 } else {
                     symbol.setSymbol(symbolIndex, stripIndex);
                 }
@@ -379,13 +378,10 @@ CinderellaReelsNode = cc.Node.extend({
         this._eventHandler.dispatchAllReelsStoppedEvent(this._resultSymbols);
     },
 
-    playSymbolAnimation : function (targetSymbolNum) {
-        this._resultSymbols?.forEach((symbols) => {
-            symbols.forEach((symbol) => {
-                if(symbol.getSymbolNum() === targetSymbolNum){
-                    symbol.setAnimation("play");
-                }
-            })
+    playSymbolAnimation : function (symbols) {
+        symbols.forEach(symbol => {
+            symbol.setAnimation("play");
+            symbol.setLocalZOrder(2);
         })
     },
 
@@ -393,6 +389,7 @@ CinderellaReelsNode = cc.Node.extend({
         this._resultSymbols?.forEach((symbols) => {
             symbols.forEach((symbol) => {
                 symbol.setAnimation("normal");
+                symbol.setLocalZOrder(1);
             })
         })
     }
