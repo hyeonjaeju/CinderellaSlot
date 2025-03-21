@@ -184,34 +184,6 @@ CinderellaGameNode = cc.Node.extend({
     },
 
     calcPayout : function (data) {
-
-        /*{ // HAVE NOT PAYLINE
-            var resultSymbols = data.resultSymbols;
-            var highestPayout = 0;
-            var highestIndex = 0;
-
-            var result = new Array(GameSettings.AR_TOTAL_COUNT).fill(0);
-
-            for (var reelIndex = 0; reelIndex < GameSettings.REEL_COUNT; reelIndex++) {
-                for (var index = 0; index < GameSettings.REEL_HEIGHT; index++) {
-                    var resultIndex = resultSymbols[reelIndex][index].getSymbolNum();
-                    result[resultIndex]++;
-                }
-            }
-
-            for (var index = 0; index < result.length; index++) {
-                var payout = result[index] * this._payouts[index];
-                if (payout > highestPayout) {
-                    highestPayout = payout;
-                    highestIndex = index;
-                }
-            }
-
-            //this._reelsNode.playSymbolAnimation(highestIndex);
-            this._showPayout(highestIndex, highestPayout);
-        }*/
-
-        // HAVE PAYLINE
         var resultSymbols = this._convertReelsToRows(data.resultSymbols);
         var resultSymbolNums = resultSymbols.map(row => row.map(symbol => symbol.getSymbolNum()));
 
@@ -251,32 +223,42 @@ CinderellaGameNode = cc.Node.extend({
     _checkWin: function (resultSymbols, resultSymbolNums, payLines, minMatch = 3) {
         var wins = [];
 
+        // TODO: Wild 감지해서 유동적으로 결과를 뽑아내기 위해 시작 노드 강제로 넣지 말고 Wild가 나오지 않을 때 까지 반복하기. (Wild는 유리구두)
         // payLines 배열의 각 라인에 대해 확인
         for (var i = 0; i < payLines.length; i++) {
-            var payLine = payLines[i];
-            var firstSymbol = resultSymbolNums[payLine[0]][0]; // 첫 번째 릴의 첫 번째 심볼
-            var matchCount = 1; // 연속 심볼의 개수
+            var payLine = payLines[i]; // 페이라인 선택
+            var selectedSymbol = null;
+            var matchCount = 0; // 연속 심볼의 개수
             var isWinning = false; // 당첨 여부
             var matchSymbols = [];
-            matchSymbols.push(resultSymbols[payLine[0]][0]); // 첫 번째 릴의 첫 번째 심볼
 
             // payLine에서 각 릴의 해당 행에 대해 비교
-            for (var reelIndex = 1; reelIndex < payLine.length; reelIndex++) {
+            for (var reelIndex = 0; reelIndex < payLine.length; reelIndex++) {
                 var row = payLine[reelIndex]; // 현재 릴에서 확인할 행
-                if (resultSymbolNums[row][reelIndex] === firstSymbol) {
+
+                //Wild일 때
+                if(resultSymbolNums[row][reelIndex] === SymbolType.WILD){
                     matchCount++;
                     matchSymbols.push(resultSymbols[row][reelIndex]);
-                    if (matchCount >= minMatch) {
-                        isWinning = true;
+                }else if(selectedSymbol === null){
+                    selectedSymbol = resultSymbolNums[row][reelIndex];
+                    matchSymbols.push(resultSymbols[row][reelIndex]);
+                }else{
+                    if (resultSymbolNums[row][reelIndex] === selectedSymbol) {
+                        matchCount++;
+                        matchSymbols.push(resultSymbols[row][reelIndex]);
+                        if (matchCount >= minMatch) {
+                            isWinning = true;
+                        }
+                    } else {
+                        break;
                     }
-                } else {
-                    break;
                 }
             }
 
             // 당첨된 라인이라면 wins와 winningSymbols에 추가
             if (isWinning) {
-                wins.push({ line: i, symbol: firstSymbol, count: matchCount, matchSymbols: matchSymbols });
+                wins.push({ line: i, symbol: selectedSymbol, count: matchCount, matchSymbols: matchSymbols });
             }
         }
 

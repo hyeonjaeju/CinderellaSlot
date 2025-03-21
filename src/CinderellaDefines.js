@@ -14,7 +14,7 @@ var ReelEvents = {
 // 심볼 인덱스 정의
 var SymbolType = {
     NORMAL: 0,
-    WILD: 1,
+    WILD: 6,
     SCATTER: 5,
 };
 

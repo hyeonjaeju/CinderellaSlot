@@ -144,10 +144,10 @@ CinderellaReelsNode = cc.Node.extend({
         this._firstLongSpinIndex = this._reelCount+1;
 
         //전 resultSymbols(결과 심볼 노드) 내리기
-        this._beforeresultSymbolsAnimation();
+        this._beforeResultSymbolsAnimation();
 
         //resultSymbols 재생성
-        this._createresultSymbols();
+        this._createResultSymbols();
 
         //릴 회전
         this.update = (dt) => {
@@ -193,7 +193,7 @@ CinderellaReelsNode = cc.Node.extend({
         }
     },
 
-    _beforeresultSymbolsAnimation: function () {
+    _beforeResultSymbolsAnimation: function () {
         if (this._resultSymbols.length > 0) {
             for (var reelIndex = 0; reelIndex < this._reelCount; reelIndex++) {
                 var symbols = this._resultSymbols[reelIndex];
@@ -217,7 +217,7 @@ CinderellaReelsNode = cc.Node.extend({
         }
     },
 
-    _createresultSymbols : function () {
+    _createResultSymbols : function () {
         this._scatterCount = 0;
 
         //resultSymbols 초기화 & 생성
