@@ -27,6 +27,7 @@ var GameSettings = {
     SYMBOL_HEIGHT: 105,
     SYMBOL_SIZE: 1,
     SPIN_SPEED: 1200,
+    LONG_SPIN_MUL: 7,
     STOP_DELAY: 0.25,
-    STOP_DELAY_FAST: 0.1
+    STOP_DELAY_FAST: 0.1,
 };

@@ -62,8 +62,8 @@ CinderellaGameNode = cc.Node.extend({
     _hexToPayLine: function() {
         // '0x'를 제거하고, 나머지 부분을 배열로 변환
         this._payLinesData.forEach((payLine) => {
-            var hex = payLine.slice(2);
-            this._payLines.push(hex.split('').map(x => parseInt(x, 16)));
+            var hex = payLine.replace(/^0x/, '');
+            this._payLines.push(Array.from(hex, x => parseInt(x, 16)));
         })
     },
 

@@ -159,22 +159,30 @@ CinderellaReelsNode = cc.Node.extend({
         var frameIndependentSpeed = this._spinSpeed * dt;
 
         for (var reelIndex = 0; reelIndex < this._reelSymbols.length; reelIndex++) {
-            if (reelIndex < this._spinEndCount) continue; // 중간 건너뛰기
+            if (reelIndex < this._spinEndCount) continue; // 다 돌아간 릴 건너뛰기
 
             var symbols = this._reelSymbols[reelIndex];
             var strip = this._getStrip(reelIndex);
             var stripLength = strip.length;
             var stripIndex = this._stripIndex[reelIndex];
 
+            var highestY = symbols[symbols.length-1].getPositionY(); // 초기값 설정
+
             for (var symbolIndex = 0; symbolIndex < symbols.length; symbolIndex++) {
                 var symbol = symbols[symbolIndex];
+                var symbolPosY = symbol.getPositionY();
+
+                // Y 값이 더 크면 highestY 업데이트
+                if (symbolPosY > highestY) {
+                    highestY = symbolPosY;
+                }
 
                 symbol.setPositionY(symbol.getPositionY() - frameIndependentSpeed);
 
                 if (symbol.getPositionY() <= this._endPosY) {
                     var prevStripIndex = (stripIndex + this._reelHeight + 2) % stripLength;
                     symbol.setSymbol(strip[prevStripIndex] - 1, prevStripIndex);
-                    var nextPosY = Math.max(...symbols.map(s => s.getPositionY())) + this._symbolHeight + 10;
+                    var nextPosY = highestY + this._symbolHeight + 10;
                     symbol.setPositionY(nextPosY);
                     stripIndex = (stripIndex + 1) % stripLength;
                     this._stripIndex[reelIndex] = stripIndex;
@@ -249,7 +257,7 @@ CinderellaReelsNode = cc.Node.extend({
             delay += delayAdd;
 
             if(reelIndex >= this._firstLongSpinIndex){
-                delay += delayAdd * 7; // TODO: 임시로 해놓은 수치 바꾸기
+                delay += delayAdd * GameSettings.LONG_SPIN_MUL;
             }
 
             //릴 정지 스케쥴
@@ -319,6 +327,7 @@ CinderellaReelsNode = cc.Node.extend({
 
             symbol.runAction(cc.sequence(
                 cc.moveTo(timeToMove, cc.p(xPos, targetY)),
+                cc.jumpBy(0.25,cc.p(0,0), -10, 1).easing(cc.easeOut(2.0)),
                 cc.callFunc(function (reelIndex,index){
                     if(index + 1 >= this._reelHeight){
                         if(this._firstLongSpinIndex - 1 <= reelIndex && reelIndex < this._reelCount){
@@ -326,7 +335,6 @@ CinderellaReelsNode = cc.Node.extend({
                         }
                     }
                 }.bind(this,reelIndex,index)),
-                cc.jumpBy(0.25,cc.p(0,0), -10, 1).easing(cc.easeOut(2.0)),
                 cc.callFunc(this._checkAllSymbolsStopped.bind(this))
             ));
         }
