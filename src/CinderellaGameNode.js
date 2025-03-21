@@ -141,7 +141,7 @@ CinderellaGameNode = cc.Node.extend({
     },
 
     _onSpin : function (){
-        this._reelsNode.stopSymbolAnimation();
+        this._reelsNode.stopSymbolsWithDelay();
 
         //임시로 5개 고정
         var rand = [];
@@ -217,15 +217,19 @@ CinderellaGameNode = cc.Node.extend({
 
 
         var winResult = this._checkWin(resultSymbols, resultSymbolNums, this._payLines);
-        var winSymbols = winResult.winningSymbols;
-        if(winSymbols.length > 0){ this._reelsNode.playSymbolAnimation(winSymbols); }
+        var matchSymbols = [];
         var totalPay = 0;
         winResult.wins.forEach(win => {
             var winSymbol = win.symbol;
             var symbolCount = win.count;
             totalPay += this._payouts[winSymbol] * symbolCount;
+
+            matchSymbols.push(win.matchSymbols);
         })
         this._showPayout(totalPay);
+        if(matchSymbols.length > 0){
+            this._reelsNode.playSymbolsWithDelay(matchSymbols);
+        }
     },
 
     _convertReelsToRows: function(reels) {
@@ -246,7 +250,6 @@ CinderellaGameNode = cc.Node.extend({
 
     _checkWin: function (resultSymbols, resultSymbolNums, payLines, minMatch = 3) {
         var wins = [];
-        var winningSymbolSets = new Set(); // 당첨된 심볼들을 담을 배열
 
         // payLines 배열의 각 라인에 대해 확인
         for (var i = 0; i < payLines.length; i++) {
@@ -273,14 +276,11 @@ CinderellaGameNode = cc.Node.extend({
 
             // 당첨된 라인이라면 wins와 winningSymbols에 추가
             if (isWinning) {
-                wins.push({ line: i, symbol: firstSymbol, count: matchCount });
-                matchSymbols.forEach(symbol => {
-                    winningSymbolSets.add(symbol);
-                })
+                wins.push({ line: i, symbol: firstSymbol, count: matchCount, matchSymbols: matchSymbols });
             }
         }
 
-        return { wins, winningSymbols : Array.from(winningSymbolSets) };
+        return { wins };
     },
 
     _showPayout : function (payout) {

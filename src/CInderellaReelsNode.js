@@ -40,6 +40,8 @@ CinderellaReelsNode = cc.Node.extend({
         this._scatterCount = null;
         this._firstLongSpinIndex = null;
         this._longSpinEffect = null;
+
+        this._symbolAnimationSchedule = null;
     },
 
 
@@ -386,14 +388,45 @@ CinderellaReelsNode = cc.Node.extend({
         this._eventHandler.dispatchAllReelsStoppedEvent(this._resultSymbols);
     },
 
-    playSymbolAnimation : function (symbols) {
+    playSymbolsWithDelay: function(symbols2DArray) {
+        //한줄만 있을 때
+        if(symbols2DArray.length <= 1) {
+            this._playSymbolAnimation(symbols2DArray[0]);
+            return;
+        }
+
+        //매치된 전체 심볼을 보여줌
+        symbols2DArray.forEach(symbols => {
+            this._playSymbolAnimation(symbols);
+        })
+
+
+        var index = 0;
+
+        this._symbolAnimationSchedule = function() {
+            this._stopSymbolAnimation();
+            this._playSymbolAnimation(symbols2DArray[index]);
+            index = (index + 1) % symbols2DArray.length;
+        }.bind(this);
+
+        this.schedule(this._symbolAnimationSchedule, 2);
+    },
+
+    stopSymbolsWithDelay: function() {
+        if(this._symbolAnimationSchedule){
+            this.unschedule(this._symbolAnimationSchedule);
+        }
+        this._stopSymbolAnimation();
+    },
+
+    _playSymbolAnimation : function (symbols) {
         symbols.forEach(symbol => {
             symbol.setAnimation("play");
             symbol.setLocalZOrder(2);
         })
     },
 
-    stopSymbolAnimation : function () {
+    _stopSymbolAnimation : function () {
         this._resultSymbols?.forEach((symbols) => {
             symbols.forEach((symbol) => {
                 symbol.setAnimation("normal");
