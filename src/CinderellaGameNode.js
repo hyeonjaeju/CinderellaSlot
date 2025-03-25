@@ -223,11 +223,10 @@ CinderellaGameNode = cc.Node.extend({
     _checkWin: function (resultSymbols, resultSymbolNums, payLines, minMatch = 3) {
         var wins = [];
 
-        // TODO: Wild 감지해서 유동적으로 결과를 뽑아내기 위해 시작 노드 강제로 넣지 말고 Wild가 나오지 않을 때 까지 반복하기. (Wild는 유리구두)
         // payLines 배열의 각 라인에 대해 확인
         for (var i = 0; i < payLines.length; i++) {
             var payLine = payLines[i]; // 페이라인 선택
-            var selectedSymbol = null;
+            var selectSymbolNum = null;
             var matchCount = 0; // 연속 심볼의 개수
             var isWinning = false; // 당첨 여부
             var matchSymbols = [];
@@ -235,30 +234,26 @@ CinderellaGameNode = cc.Node.extend({
             // payLine에서 각 릴의 해당 행에 대해 비교
             for (var reelIndex = 0; reelIndex < payLine.length; reelIndex++) {
                 var row = payLine[reelIndex]; // 현재 릴에서 확인할 행
+                var resultSymbolNum = resultSymbolNums[row][reelIndex];
+                var resultSymbol = resultSymbols[row][reelIndex];
 
-                //Wild일 때
-                if(resultSymbolNums[row][reelIndex] === SymbolType.WILD){
+                if (resultSymbolNum === SymbolType.WILD || selectSymbolNum === null || selectSymbolNum === resultSymbolNum) {
+                    if (resultSymbolNum !== SymbolType.WILD) { selectSymbolNum ??= resultSymbolNum; }
+
+                    matchSymbols.push(resultSymbol);
                     matchCount++;
-                    matchSymbols.push(resultSymbols[row][reelIndex]);
-                }else if(selectedSymbol === null){
-                    selectedSymbol = resultSymbolNums[row][reelIndex];
-                    matchSymbols.push(resultSymbols[row][reelIndex]);
-                }else{
-                    if (resultSymbolNums[row][reelIndex] === selectedSymbol) {
-                        matchCount++;
-                        matchSymbols.push(resultSymbols[row][reelIndex]);
-                        if (matchCount >= minMatch) {
-                            isWinning = true;
-                        }
-                    } else {
-                        break;
-                    }
+                } else {
+                    break;
+                }
+
+                if (matchCount >= minMatch) {
+                    isWinning = true;
                 }
             }
 
             // 당첨된 라인이라면 wins와 winningSymbols에 추가
             if (isWinning) {
-                wins.push({ line: i, symbol: selectedSymbol, count: matchCount, matchSymbols: matchSymbols });
+                wins.push({ line: i, symbol: selectSymbolNum, count: matchCount, matchSymbols: matchSymbols });
             }
         }
 

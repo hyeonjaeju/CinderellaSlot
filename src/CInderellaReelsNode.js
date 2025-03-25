@@ -239,7 +239,7 @@ CinderellaReelsNode = cc.Node.extend({
                     symbol.setSymbol(symbolIndex, stripIndex);
                 }
 
-                if(symbolIndex === SymbolType.SCATTER - 1) {
+                if(symbolIndex === SymbolType.SCATTER) {
                     this._scatterCount++;
                     if(this._scatterCount === 2) {
                         this._firstLongSpinIndex = reelIndex + 1;
