@@ -246,7 +246,7 @@ CinderellaGameNode = cc.Node.extend({
                     break;
                 }
 
-                if (matchCount >= minMatch) {
+                if (selectSymbolNum !== null && matchCount >= minMatch) {
                     isWinning = true;
                 }
             }
