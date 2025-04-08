@@ -16,6 +16,7 @@ CinderellaReelsNode = cc.Node.extend({
 
     _initProperties: function () {
         this._symbolPoolManager = null;
+        this._symbolManager = null;
 
         this._AR = null;
         this._ARTotalCount = null;
@@ -103,27 +104,13 @@ CinderellaReelsNode = cc.Node.extend({
             this._AR.push("sl_symbolAR0" + (i + 1));
         }
 
+        this._symbolManager = new SymbolManager();
+        this._symbolManager.createSymbols(this._reels, this.stripData);
+
         // 심볼 풀링매니저 생성
         this._symbolPoolManager = new SymbolPoolManager(SymbolNode);
 
-        // 스핀할 심볼들 생성
-        for (var reelIndex = 0; reelIndex < this._reelCount; reelIndex++) {
-            var reel = this._reels[reelIndex];
-            var xPos = reel.getContentSize().width / 2;
-            var layout = reel.layout;
-            var strip = this._getStrip(reelIndex);
-
-            for (var symbolCount = 0; symbolCount < this._reelHeight+2; symbolCount++) {
-                var symbolIndex = strip[symbolCount] - 1; //strip은 1부터 시작 해서 내림
-                var symbolNode = this._symbolPoolManager.getSymbol();
-                symbolNode.initSymbol(this._AR, symbolIndex, this._mulSymbolSize);
-
-                symbolNode.setPosition(xPos, this._startPosY + symbolCount * this._symbolHeight);
-
-                layout.addChild(symbolNode, 1);
-                this._reelSymbols[reelIndex].push(symbolNode);
-            }
-        }
+        this._reelSymbols = this._symbolManager._symbols;
     },
 
     _getStrip(reelIndex) {
